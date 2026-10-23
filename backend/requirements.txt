@@ -1,0 +1,18 @@
+# Runtime dependencies (pinned). Used by Docker and production.
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+sqlalchemy[asyncio]==2.0.43
+asyncpg==0.30.0
+alembic==1.16.5
+pydantic==2.11.9
+pydantic-settings==2.11.0
+email-validator==2.3.0
+redis==5.2.1
+arq==0.26.3
+httpx==0.28.1
+openai==1.109.1
+pillow==11.3.0
+pdfplumber==0.11.7
+pwdlib[argon2]==0.2.1
+PyJWT==2.10.1
+python-multipart==0.0.20

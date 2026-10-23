@@ -166,7 +166,9 @@ backend/
     api/                        # endpoint tests against a test database
   Dockerfile
   railway.json
-  pyproject.toml
+  requirements.txt              # pinned runtime dependencies
+  requirements-dev.txt          # runtime + test/lint tools
+  pyproject.toml                # tool settings (ruff, pytest)
 ```
 
 ### Router composition

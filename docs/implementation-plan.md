@@ -179,9 +179,38 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 
 **docker-compose.yml services:** `postgres`, `redis`, `backend`, `worker` (from phase 8), `frontend`.
 
-**Backend tooling:** `uv` for dependency management (`uv sync`, `uv run pytest`).
+**Backend tooling:** `pip` + a virtual environment in `backend/.venv` (Python 3.12).
 
-**Root-level files created in phase 0:** `docker-compose.yml`, `.gitignore`, `.env.example`, `README.md` (skeleton).
+| File | Contents |
+|---|---|
+| `requirements.txt` | Runtime dependencies, exact pinned versions (used by the Docker image) |
+| `requirements-dev.txt` | `-r requirements.txt` plus test and lint tools (pytest, pytest-asyncio, fakeredis, pytest-cov, ruff) |
+| `pyproject.toml` | Project metadata and tool settings only (ruff, pytest); no dependency management |
+
+**Backend setup on the host:**
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements-dev.txt
+```
+
+**Everyday backend commands** (with the virtual environment activated):
+
+```bash
+uvicorn app.main:app --reload     # run the API (uses .env + .env.local)
+pytest                            # run tests
+ruff check . && ruff format --check .
+alembic upgrade head              # apply migrations
+```
+
+**Adding a dependency:** `pip install package-name`, then add it with its exact version (`pip show package-name`) to `requirements.txt` or `requirements-dev.txt`. Avoid `pip freeze > requirements.txt`, which mixes runtime and dev packages.
+
+**Environment files:** `backend/.env` (Docker Compose hostnames) and `backend/.env.local` (localhost overrides for running on the host), `frontend/.env` and `frontend/.env.local`. Only the `.env.example` templates are committed.
+
+**Root-level files created in phase 0:** `docker-compose.yml`, `README.md` (skeleton). Already created: `.gitignore`, `.env` / `.env.local` / `.env.example` in `backend/` and `frontend/`.
 
 ---
 
@@ -216,7 +245,9 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 
 | Task | Files |
 |---|---|
-| Project config: dependencies, ruff, pytest settings | `pyproject.toml` |
+| Virtual environment (`python3 -m venv .venv`); not committed | `backend/.venv/` |
+| Pinned runtime and dev dependencies | `requirements.txt`, `requirements-dev.txt` |
+| Project metadata, ruff and pytest settings | `pyproject.toml` |
 | Settings from env vars, DB URL scheme fix | `core/config.py` |
 | Structured logging + request id middleware | `core/logging.py` |
 | `AppError` hierarchy + exception handlers (incl. validation reshaping) | `core/errors.py` |
@@ -229,7 +260,8 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 | `GET /health` (Postgres + Redis) | `api/health.py` |
 | App factory, middleware, handlers, router mounting | `main.py`, `api/v1/router.py` |
 | Async Alembic environment | `alembic.ini`, `alembic/env.py` |
-| Image: install deps, run uvicorn on `::` | `Dockerfile` |
+| Image: Python 3.12, `pip install -r requirements.txt`, run uvicorn on `::` | `Dockerfile` |
+| Keep `.venv`, `.env*` (except `.env.example`), caches, and tests out of the image | `.dockerignore` |
 
 **Frontend**
 
@@ -245,7 +277,7 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 | Dev proxy `/api` and `/health` → backend | `vite.config.ts` |
 | Production image: Node build → nginx; SPA fallback; `/api` proxy | `Dockerfile`, `nginx.conf` |
 
-**Root:** `docker-compose.yml`, `.gitignore`, `.env.example`, `README.md` skeleton.
+**Root:** `docker-compose.yml`, `README.md` skeleton.
 
 **Tests**
 - `GET /health` returns 200 with database and redis "ok".
@@ -254,6 +286,7 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 - `paginate()` returns correct `total`, `total_pages`, and slices.
 
 **Done when**
+- [ ] `pip install -r requirements-dev.txt` succeeds in a fresh `backend/.venv`.
 - [ ] `docker compose up --build` starts postgres, redis, backend, frontend.
 - [ ] `http://localhost:8000/health` returns ok; `http://localhost:8000/docs` shows OpenAPI.
 - [ ] Frontend loads the layout with placeholder pages; `/api` requests reach the backend through the proxy.
@@ -657,7 +690,7 @@ Both modes are **same-origin** (nginx proxy or Vite proxy), matching production,
 
 | Phase | Status |
 |---|---|
-| 0 — Foundation | Not started |
+| 0 — Foundation | Done |
 | 1 — Auth & Multi-User | Not started |
 | 2 — Goals & Weight | Not started |
 | 3 — Meal Entry | Not started |
