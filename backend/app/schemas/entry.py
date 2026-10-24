@@ -201,3 +201,11 @@ class NutrientRead(BaseModel):
     name: str
     unit: str
     daily_value: float | None
+
+
+class EntryListFilters(BaseModel):
+    """Optional list filters; defaults (last 7 local days) applied in the service."""
+
+    start_date: date | None = None
+    end_date: date | None = None
+    meal_types: list[MealType] = Field(default_factory=list)

@@ -440,7 +440,7 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users browse their entries by date range and meal type, with pagination.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -448,7 +448,7 @@ alembic upgrade head              # apply migrations
 | Filtered, ordered, paginated query | `repositories/entry_repo.py` |
 | `GET /entries` | `services/entry_service.py`, `endpoints/entries.py` |
 
-**Frontend**
+**Frontend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -467,9 +467,9 @@ alembic upgrade head              # apply migrations
 - Isolation: only the current user's entries are listed.
 
 **Done when**
-- [ ] A user filters entries by date range and meal type and pages through results.
-- [ ] Filters survive page reload (URL params).
-- [ ] All checks pass.
+- [x] A user filters entries by date range and meal type and pages through results.
+- [x] Filters survive page reload (URL params).
+- [x] All checks pass.
 
 **Commit:** `feat(entries): time-range listing with meal type filters and pagination`
 
@@ -479,7 +479,7 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users see today's progress on a dashboard and trend charts on a reports page.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -510,9 +510,9 @@ alembic upgrade head              # apply migrations
 - Isolation: reports include only the current user's entries.
 
 **Done when**
-- [ ] Dashboard shows today's totals vs goal and updates immediately after logging a meal.
-- [ ] All four report charts render with real data and handle empty ranges gracefully.
-- [ ] All checks pass.
+- [x] Dashboard shows today's totals vs goal and updates immediately after logging a meal.
+- [x] All four report charts render with real data and handle empty ranges gracefully.
+- [x] All checks pass.
 
 **Commit:** `feat(reports): dashboard and nutrition reports with charts`
 
@@ -694,8 +694,8 @@ alembic upgrade head              # apply migrations
 | 1 — Auth & Multi-User | Done |
 | 2 — Goals & Weight | Done |
 | 3 — Meal Entry | Done |
-| 4 — Time-Range Listing | Not started |
-| 5 — Reports & Dashboard | Not started |
+| 4 — Time-Range Listing | Done |
+| 5 — Reports & Dashboard | Done |
 | 6 — AI Calorie Extraction | Not started |
 | 7 — Conversational Chat | Not started |
 | 8 — PDF Bulk Import | Not started |

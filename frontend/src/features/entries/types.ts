@@ -53,6 +53,14 @@ export type FoodEntryCreatePayload = {
 
 export type FoodEntryUpdatePayload = Partial<FoodEntryCreatePayload>;
 
+export type EntryListParams = {
+  start_date: string;
+  end_date: string;
+  meal_types: MealType[];
+  page: number;
+  page_size?: number;
+};
+
 export type Page<T> = {
   items: T[];
   page: number;
@@ -69,3 +77,10 @@ export const MEAL_TYPES: { value: MealType; label: string }[] = [
 ];
 
 export const UNITS = ["g", "ml", "piece", "serving", "cup", "tbsp", "tsp"] as const;
+
+export const ENTRY_SOURCE_LABELS: Record<EntrySource, string> = {
+  manual: "Manual",
+  ai_image: "AI image",
+  pdf_import: "PDF import",
+  chat: "Chat",
+};

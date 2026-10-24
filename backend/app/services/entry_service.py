@@ -3,21 +3,63 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
-from app.core.time import to_local_date
-from app.models.enums import EntrySource
+from app.core.errors import BusinessRuleError, NotFoundError
+from app.core.time import to_local_date, today_for
+from app.models.enums import EntrySource, MealType
 from app.models.user import User
 from app.repositories import entry_repo
 from app.schemas.common import Page, PaginationParams
-from app.schemas.entry import FoodEntryCreate, FoodEntryRead, FoodEntryUpdate
+from app.schemas.entry import (
+    EntryListFilters,
+    FoodEntryCreate,
+    FoodEntryRead,
+    FoodEntryUpdate,
+)
+
+_MAX_LIST_RANGE_DAYS = 366
 
 
 def _to_read(entry: object) -> FoodEntryRead:
     return FoodEntryRead.model_validate(entry)
+
+
+def _resolve_list_range(
+    user: User,
+    filters: EntryListFilters,
+) -> tuple[date, date, list[MealType]]:
+    today = today_for(user)
+    end_date = filters.end_date or today
+    start_date = filters.start_date or (end_date - timedelta(days=6))
+
+    if start_date > end_date:
+        raise BusinessRuleError(
+            code="INVALID_DATE_RANGE",
+            message="start_date must be on or before end_date",
+            details=[
+                {
+                    "field": "start_date",
+                    "message": "Must be less than or equal to end_date",
+                }
+            ],
+        )
+
+    if (end_date - start_date).days > _MAX_LIST_RANGE_DAYS:
+        raise BusinessRuleError(
+            code="INVALID_DATE_RANGE",
+            message=f"Date range must be at most {_MAX_LIST_RANGE_DAYS} days",
+            details=[
+                {
+                    "field": "end_date",
+                    "message": f"Range cannot exceed {_MAX_LIST_RANGE_DAYS} days",
+                }
+            ],
+        )
+
+    return start_date, end_date, list(filters.meal_types)
 
 
 async def create_entry(
@@ -101,6 +143,28 @@ async def delete_entry(
         raise NotFoundError(code="ENTRY_NOT_FOUND", message="Entry not found")
     await entry_repo.delete_entry(session, entry)
     await session.commit()
+
+
+async def list_entries(
+    session: AsyncSession,
+    user: User,
+    params: PaginationParams,
+    filters: EntryListFilters,
+) -> Page[FoodEntryRead]:
+    start_date, end_date, meal_types = _resolve_list_range(user, filters)
+    page = await entry_repo.list_entries(
+        session,
+        user.id,
+        params,
+        start_date=start_date,
+        end_date=end_date,
+        meal_types=meal_types or None,
+    )
+    return Page.create(
+        items=[_to_read(item) for item in page.items],
+        total=page.total,
+        params=params,
+    )
 
 
 async def list_recent(

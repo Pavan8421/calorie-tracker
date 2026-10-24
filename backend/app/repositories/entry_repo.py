@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.enums import MealType
 from app.models.food_entry import FoodEntry
 from app.repositories.base import paginate
 from app.schemas.common import Page, PaginationParams
@@ -37,6 +40,26 @@ async def update_entry(session: AsyncSession, entry: FoodEntry, **fields: object
 async def delete_entry(session: AsyncSession, entry: FoodEntry) -> None:
     await session.delete(entry)
     await session.flush()
+
+
+async def list_entries(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    params: PaginationParams,
+    *,
+    start_date: date,
+    end_date: date,
+    meal_types: Sequence[MealType] | None = None,
+) -> Page[FoodEntry]:
+    stmt = select(FoodEntry).where(
+        FoodEntry.user_id == user_id,
+        FoodEntry.consumed_on >= start_date,
+        FoodEntry.consumed_on <= end_date,
+    )
+    if meal_types:
+        stmt = stmt.where(FoodEntry.meal_type.in_(list(meal_types)))
+    stmt = stmt.order_by(FoodEntry.consumed_at.desc(), FoodEntry.id.desc())
+    return await paginate(session, stmt, params)
 
 
 async def list_recent_foods(

@@ -3,14 +3,22 @@ import { toast } from "sonner";
 
 import * as entriesApi from "@/features/entries/api";
 import type {
+  EntryListParams,
   FoodEntryCreatePayload,
   FoodEntryUpdatePayload,
 } from "@/features/entries/types";
+import { reportKeys } from "@/features/reports/hooks";
+
+function invalidateEntryRelated(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: entryKeys.all });
+  void queryClient.invalidateQueries({ queryKey: reportKeys.all });
+}
 
 export const entryKeys = {
   all: ["entries"] as const,
   recent: (page: number, pageSize: number) =>
     ["entries", "recent", page, pageSize] as const,
+  list: (params: EntryListParams) => ["entries", "list", params] as const,
   detail: (id: string) => ["entries", "detail", id] as const,
 };
 
@@ -34,12 +42,19 @@ export function useRecentEntries(page = 1, pageSize = 20) {
   });
 }
 
+export function useEntries(params: EntryListParams) {
+  return useQuery({
+    queryKey: entryKeys.list(params),
+    queryFn: () => entriesApi.listEntries(params),
+  });
+}
+
 export function useCreateEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: FoodEntryCreatePayload) => entriesApi.createEntry(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: entryKeys.all });
+      invalidateEntryRelated(queryClient);
       toast.success("Meal logged");
     },
   });
@@ -51,7 +66,7 @@ export function useUpdateEntry() {
     mutationFn: ({ id, payload }: { id: string; payload: FoodEntryUpdatePayload }) =>
       entriesApi.updateEntry(id, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: entryKeys.all });
+      invalidateEntryRelated(queryClient);
       toast.success("Entry updated");
     },
   });
@@ -62,7 +77,7 @@ export function useDeleteEntry() {
   return useMutation({
     mutationFn: (id: string) => entriesApi.deleteEntry(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: entryKeys.all });
+      invalidateEntryRelated(queryClient);
       toast.success("Entry deleted");
     },
   });
