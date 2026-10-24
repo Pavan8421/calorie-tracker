@@ -29,7 +29,7 @@ from app.core import redis as redis_module
 from app.core.config import get_settings
 from app.db.base import Base
 from app.main import create_app
-from app.models import Goal, RefreshToken, User, WeightLog  # noqa: F401
+from app.models import FoodEntry, Goal, RefreshToken, User, WeightLog  # noqa: F401
 
 get_settings.cache_clear()
 

@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { SettingsPage } from "@/features/auth/pages/SettingsPage";
+import { LogMealPage } from "@/features/entries/pages/LogMealPage";
 import { GoalsPage } from "@/features/goals/pages/GoalsPage";
 import { HomePage } from "@/features/placeholders/HomePage";
 import { PlaceholderPage } from "@/features/placeholders/PlaceholderPage";
@@ -20,12 +21,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
-          <Route
-            path="log"
-            element={
-              <PlaceholderPage title="Log meal" description="Create food entries by meal type." />
-            }
-          />
+          <Route path="log" element={<LogMealPage />} />
           <Route
             path="entries"
             element={

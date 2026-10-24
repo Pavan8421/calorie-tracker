@@ -58,7 +58,7 @@ export function SettingsPage() {
     <div className="mx-auto max-w-lg">
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle>My profile</CardTitle>
           <CardDescription>Update your display name and timezone.</CardDescription>
         </CardHeader>
         <CardContent>

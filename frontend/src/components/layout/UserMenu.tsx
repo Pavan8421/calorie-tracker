@@ -65,9 +65,6 @@ export function UserMenu() {
             <MenuLink to="/settings" onSelect={() => setOpen(false)}>
               My profile
             </MenuLink>
-            <MenuLink to="/settings" onSelect={() => setOpen(false)}>
-              Settings
-            </MenuLink>
             <button
               type="button"
               role="menuitem"

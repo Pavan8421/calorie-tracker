@@ -428,9 +428,9 @@ alembic upgrade head              # apply migrations
 - Isolation for get/update/delete.
 
 **Done when**
-- [ ] A user logs a meal with macros and micronutrients, edits it, and deletes it.
-- [ ] Recent foods pre-fill the form.
-- [ ] All checks pass.
+- [x] A user logs a meal with macros and micronutrients, edits it, and deletes it.
+- [x] Recent foods pre-fill the form.
+- [x] All checks pass.
 
 **Commit:** `feat(entries): meal entry CRUD with nutrient registry and recent foods`
 
@@ -693,7 +693,7 @@ alembic upgrade head              # apply migrations
 | 0 — Foundation | Done |
 | 1 — Auth & Multi-User | Done |
 | 2 — Goals & Weight | Done |
-| 3 — Meal Entry | Not started |
+| 3 — Meal Entry | Done |
 | 4 — Time-Range Listing | Not started |
 | 5 — Reports & Dashboard | Not started |
 | 6 — AI Calorie Extraction | Not started |
