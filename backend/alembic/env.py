@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.db.base import Base
 
-# Import models here as they are added so Alembic autogenerate sees them.
-# from app.models import user, refresh_token, ...  # noqa: F401
+# Import models so Alembic autogenerate sees their tables on Base.metadata.
+from app.models import Goal, RefreshToken, User, WeightLog  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

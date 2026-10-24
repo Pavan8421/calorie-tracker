@@ -336,10 +336,10 @@ alembic upgrade head              # apply migrations
 - Login rate limit returns `429` with `Retry-After`.
 
 **Done when**
-- [ ] A user can register, log in, reload the page and stay logged in, then log out.
-- [ ] Unauthenticated users are redirected to `/login`.
-- [ ] Two users in two browsers have independent sessions.
-- [ ] All checks pass.
+- [x] A user can register, log in, reload the page and stay logged in, then log out.
+- [x] Unauthenticated users are redirected to `/login`.
+- [x] Two users in two browsers have independent sessions.
+- [x] All checks pass.
 
 **Commit:** `feat(auth): registration, login, token refresh, and protected routes`
 
@@ -349,7 +349,7 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users set versioned nutrition goals and a weight goal, log weight, and see progress.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -382,9 +382,9 @@ alembic upgrade head              # apply migrations
 - Isolation: other user's goal / weight log → `404`.
 
 **Done when**
-- [ ] A user sets goals, edits them, and sees history.
-- [ ] A user logs weight and sees progress toward the target.
-- [ ] All checks pass.
+- [x] A user sets goals, edits them, and sees history.
+- [x] A user logs weight and sees progress toward the target.
+- [x] All checks pass.
 
 **Commit:** `feat(goals): versioned nutrition goals, weight logs, and progress`
 
@@ -691,8 +691,8 @@ alembic upgrade head              # apply migrations
 | Phase | Status |
 |---|---|
 | 0 — Foundation | Done |
-| 1 — Auth & Multi-User | Not started |
-| 2 — Goals & Weight | Not started |
+| 1 — Auth & Multi-User | Done |
+| 2 — Goals & Weight | Done |
 | 3 — Meal Entry | Not started |
 | 4 — Time-Range Listing | Not started |
 | 5 — Reports & Dashboard | Not started |

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 
+import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,7 +11,6 @@ const navItems = [
   { to: "/goals", label: "Goals" },
   { to: "/chat", label: "Chat" },
   { to: "/import", label: "Import" },
-  { to: "/settings", label: "Settings" },
 ];
 
 export function AppLayout() {
@@ -45,10 +45,11 @@ export function AppLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <header className="rounded-2xl border border-border bg-card/90 px-5 py-4 shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/90 px-5 py-4 shadow-sm">
           <p className="text-sm text-muted-foreground">
             Track meals, goals, and nutrition trends in one place.
           </p>
+          <UserMenu />
         </header>
         <main className="flex-1">
           <Outlet />

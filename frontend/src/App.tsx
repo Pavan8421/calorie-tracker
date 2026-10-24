@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 
 import { queryClient } from "@/api/queryClient";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { AuthProvider } from "@/providers/AuthProvider";
 import { AppRoutes } from "@/routes";
 
 export default function App() {
@@ -11,8 +12,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ErrorBoundary>
-          <AppRoutes />
-          <Toaster richColors position="top-right" />
+          <AuthProvider>
+            <AppRoutes />
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
         </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>

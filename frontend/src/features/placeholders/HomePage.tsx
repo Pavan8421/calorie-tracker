@@ -4,6 +4,7 @@ import axios from "axios";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/providers/auth-context";
 
 type HealthResponse = {
   status: string;
@@ -17,6 +18,7 @@ async function fetchHealth(): Promise<HealthResponse> {
 }
 
 export function HomePage() {
+  const { user } = useAuth();
   const healthQuery = useQuery({
     queryKey: ["health"],
     queryFn: fetchHealth,
@@ -29,7 +31,7 @@ export function HomePage() {
         <CardHeader>
           <CardTitle>Dashboard</CardTitle>
           <CardDescription>
-            Foundation is ready. Feature pages will land in later phases.
+            Welcome{user ? `, ${user.full_name}` : ""}. Feature pages will land in later phases.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">

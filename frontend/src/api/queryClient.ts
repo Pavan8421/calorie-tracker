@@ -12,7 +12,9 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       onError: (error) => {
+        // Forms map 422 details onto fields; skip the global toast.
         if (error instanceof ApiError) {
+          if (error.status === 422) return;
           toast.error(error.message);
           return;
         }
