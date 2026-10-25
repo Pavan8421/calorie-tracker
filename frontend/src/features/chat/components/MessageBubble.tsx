@@ -9,28 +9,51 @@ type MessageBubbleProps = {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
-
   const text = message.content?.trim() || (isUser ? "" : "…");
 
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <p className="max-w-[70%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-xs leading-relaxed text-primary-foreground">
+          {text}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cn(
-          "w-fit max-w-[min(85%,34rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-          isUser
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
-        )}
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap break-words">{text}</p>
-        ) : (
-          <MarkdownText text={text} />
-        )}
-        {!isUser && message.actions?.length ? (
-          <ActionChips actions={message.actions} />
-        ) : null}
+    <div className="flex max-w-[85%] gap-2">
+      <AssistantMark />
+      <div className="min-w-0 rounded-2xl rounded-bl-sm border border-border bg-surface px-3 py-2 text-xs leading-relaxed">
+        <MarkdownText text={text} />
+        {message.actions?.length ? <ActionChips actions={message.actions} /> : null}
       </div>
     </div>
+  );
+}
+
+export function AssistantMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <svg width="16" height="16" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="11" fill="none" stroke="#B9DDD7" strokeWidth="5" />
+        <circle
+          cx="16"
+          cy="16"
+          r="11"
+          fill="none"
+          stroke="#0F766E"
+          strokeWidth="5"
+          strokeDasharray="48 69.1"
+          transform="rotate(-90 16 16)"
+        />
+      </svg>
+    </span>
   );
 }

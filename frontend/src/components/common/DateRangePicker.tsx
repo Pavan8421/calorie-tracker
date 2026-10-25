@@ -1,8 +1,12 @@
+import { format } from "date-fns";
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import {
   detectPreset,
+  parseLocalDate,
   rangeForPreset,
   type DateRangePreset,
 } from "@/lib/dates";
@@ -15,6 +19,8 @@ type DateRangePickerProps = {
   endDate: string;
   onChange: (range: { start_date: string; end_date: string }) => void;
   presets?: PresetOption[];
+  /** Chips plus a range label. Date inputs show only for Custom. */
+  compact?: boolean;
 };
 
 const DEFAULT_PRESETS: PresetOption[] = [
@@ -28,57 +34,115 @@ export function DateRangePicker({
   endDate,
   onChange,
   presets = DEFAULT_PRESETS,
+  compact = false,
 }: DateRangePickerProps) {
   const allowed = presets.map((p) => p.id);
   const preset = detectPreset(startDate, endDate, allowed);
+  const [customOpen, setCustomOpen] = useState(false);
+  const customSelected = customOpen || preset === "custom";
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className={compact ? "flex flex-col gap-2" : "space-y-3"}>
+      <div className="flex flex-wrap items-center gap-1.5">
         {presets.map((item) => (
-          <Button
+          <RangeChip
             key={item.id}
-            type="button"
-            size="sm"
-            variant={preset === item.id ? "default" : "outline"}
-            className={cn(preset === item.id && "pointer-events-none")}
-            onClick={() => onChange(rangeForPreset(item.id))}
+            active={!customSelected && preset === item.id}
+            compact={compact}
+            onClick={() => {
+              setCustomOpen(false);
+              onChange(rangeForPreset(item.id));
+            }}
           >
             {item.label}
-          </Button>
+          </RangeChip>
         ))}
-        <Button
-          type="button"
-          size="sm"
-          variant={preset === "custom" ? "default" : "outline"}
-          onClick={() => onChange({ start_date: startDate, end_date: endDate })}
+        <RangeChip
+          active={customSelected}
+          compact={compact}
+          onClick={() => setCustomOpen(true)}
         >
           Custom
-        </Button>
+        </RangeChip>
+        {compact ? (
+          <span className="px-1 text-xs font-medium text-muted-foreground">
+            {formatRangeLabel(startDate, endDate)}
+          </span>
+        ) : null}
       </div>
 
+      {!compact || customSelected ? (
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="start_date">Start date</Label>
-          <Input
+          <DatePicker
             id="start_date"
-            type="date"
             value={startDate}
             max={endDate}
-            onChange={(e) => onChange({ start_date: e.target.value, end_date: endDate })}
+            onChange={(next) => onChange({ start_date: next, end_date: endDate })}
           />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="end_date">End date</Label>
-          <Input
+          <DatePicker
             id="end_date"
-            type="date"
             value={endDate}
             min={startDate}
-            onChange={(e) => onChange({ start_date: startDate, end_date: e.target.value })}
+            onChange={(next) => onChange({ start_date: startDate, end_date: next })}
           />
         </div>
       </div>
+      ) : null}
     </div>
   );
+}
+
+function RangeChip({
+  active,
+  compact,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  compact: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  if (!compact) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant={active ? "default" : "outline"}
+        className={cn(active && "pointer-events-none")}
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "h-7 rounded-lg px-2.5 text-xs font-semibold",
+        active ? "bg-primary-soft text-primary-ink" : "text-stone-700 hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function formatRangeLabel(start: string, end: string): string {
+  const startDate = parseLocalDate(start);
+  const endDate = parseLocalDate(end);
+  if (start === end) return format(startDate, "d MMM yyyy");
+  if (startDate.getFullYear() === endDate.getFullYear()) {
+    return `${format(startDate, "d MMM")} – ${format(endDate, "d MMM yyyy")}`;
+  }
+  return `${format(startDate, "d MMM yyyy")} – ${format(endDate, "d MMM yyyy")}`;
 }

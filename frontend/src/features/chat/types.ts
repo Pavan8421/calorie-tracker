@@ -41,8 +41,7 @@ export type Page<T> = {
 };
 
 export const SUGGESTED_PROMPTS = [
-  "Log 2 eggs for breakfast, about 140 kcal with 12g protein",
-  "What are my current nutrition goals?",
-  "Log my weight as 72 kg today",
-  "Summarize my calories for the last 7 days",
+  "Log 2 idlis and sambar for breakfast",
+  "How much protein have I had today?",
+  "Summarize my week",
 ] as const;

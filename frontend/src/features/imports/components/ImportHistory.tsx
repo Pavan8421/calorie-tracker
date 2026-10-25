@@ -1,3 +1,5 @@
+import { format, isToday } from "date-fns";
+
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -22,9 +24,22 @@ type ImportHistoryProps = {
 
 function statusClass(status: ImportStatus): string {
   if (status === "failed") return "bg-destructive/10 text-destructive";
-  if (status === "completed") return "bg-muted text-foreground";
-  if (status === "preview_ready") return "bg-primary/10 text-primary";
+  if (status === "completed" || status === "preview_ready") {
+    return "bg-primary-soft text-primary-ink";
+  }
   return "bg-muted text-muted-foreground";
+}
+
+function whenLabel(iso: string, job: ImportJob): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const day = isToday(date) ? "Today" : format(date, "d MMM");
+  const time = format(date, "h:mm a");
+  const added =
+    job.status === "completed"
+      ? `. ${job.imported_count} entr${job.imported_count === 1 ? "y" : "ies"} added.`
+      : "";
+  return `${day}, ${time}${added}`;
 }
 
 export function ImportHistory({
@@ -51,64 +66,58 @@ export function ImportHistory({
   const data = listQuery.data;
   if (!data || data.items.length === 0) {
     return (
-      <EmptyState
-        title="No imports yet"
-        description="Upload a food diary PDF to see it listed here."
-      />
+      <div className="px-4">
+        <EmptyState title="No imports yet" description="Upload a food diary PDF to see it listed here." />
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-3">
-      <ul className="divide-y divide-border rounded-lg border border-border">
+    <div className="flex flex-col gap-2">
+      <ul>
         {data.items.map((job) => {
           const isActive = job.id === activeJobId;
           return (
             <li
               key={job.id}
               className={cn(
-                "flex flex-wrap items-center justify-between gap-3 px-3 py-3",
-                isActive && "bg-muted/40",
+                "flex flex-col gap-1 border-b border-[#F0EBE3] px-4 py-2.5 last:border-0",
+                isActive && "bg-surface",
               )}
             >
-              <div className="min-w-0 grid gap-1">
-                <p className="truncate text-sm font-medium">{job.filename}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(job.created_at).toLocaleString()}
-                  {job.status === "completed"
-                    ? ` · ${job.imported_count} imported`
-                    : null}
-                  {job.date_format ? ` · ${job.date_format}` : null}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 truncate text-xs font-bold">{job.filename}</p>
                 <span
                   className={cn(
-                    "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                    "shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-bold",
                     statusClass(job.status),
                   )}
                 >
                   {IMPORT_STATUS_LABELS[job.status]}
                 </span>
-                <Button
-                  type="button"
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onSelectJob(job)}
-                >
-                  {isActive ? "Viewing" : "View"}
-                </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">{whenLabel(job.created_at, job)}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-fit px-0 text-xs font-semibold text-primary hover:bg-transparent hover:text-primary-deep"
+                onClick={() => onSelectJob(job)}
+              >
+                {isActive ? "Viewing" : "View rows"}
+              </Button>
             </li>
           );
         })}
       </ul>
-      <Pagination
-        page={data.page}
-        totalPages={data.total_pages}
-        total={data.total}
-        onPageChange={onPageChange}
-      />
+      <div className="px-4">
+        <Pagination
+          page={data.page}
+          totalPages={data.total_pages}
+          total={data.total}
+          onPageChange={onPageChange}
+        />
+      </div>
     </div>
   );
 }

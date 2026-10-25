@@ -1,10 +1,12 @@
+import { PanelLeft, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ApiError } from "@/api/errors";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ChatComposer } from "@/features/chat/components/ChatComposer";
 import { ConversationList } from "@/features/chat/components/ConversationList";
 import { MessageBubble } from "@/features/chat/components/MessageBubble";
@@ -26,6 +28,7 @@ export function ChatPage() {
   const sendMessage = useSendMessage();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [listOpen, setListOpen] = useState(true);
   const [actionMap, setActionMap] = useState<Record<string, ChatAction[]>>({});
   const [outgoing, setOutgoing] = useState<{ text: string; seen: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -36,6 +39,7 @@ export function ChatPage() {
     () => conversationsQuery.data?.items ?? [],
     [conversationsQuery.data?.items],
   );
+  const selected = conversations.find((conversation) => conversation.id === selectedId);
 
   useEffect(() => {
     if (selectedId) return;
@@ -47,11 +51,11 @@ export function ChatPage() {
   const displayMessages: DisplayMessage[] = useMemo(() => {
     const items = messagesQuery.data?.items ?? [];
     return items
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .filter((m) => m.content != null && m.content.trim() !== "")
-      .map((m) => ({
-        ...m,
-        actions: actionMap[m.id],
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .filter((message) => message.content != null && message.content.trim() !== "")
+      .map((message) => ({
+        ...message,
+        actions: actionMap[message.id],
       }));
   }, [messagesQuery.data?.items, actionMap]);
 
@@ -126,98 +130,128 @@ export function ChatPage() {
   }
 
   const busy = sendMessage.isPending || createConversation.isPending;
+  const threadEmpty = displayMessages.length === 0 && !showOutgoing;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-      <Card className="h-[min(70vh,720px)]">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Conversations</CardTitle>
-        </CardHeader>
-        <CardContent className="h-[calc(100%-4rem)]">
-          {conversationsQuery.isLoading ? (
-            <LoadingState label="Loading…" />
-          ) : conversationsQuery.isError ? (
-            <ErrorState
-              message="Could not load conversations."
-              onRetry={() => void conversationsQuery.refetch()}
-            />
-          ) : (
-            <ConversationList
-              conversations={conversations}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onNew={() => void handleNewChat()}
-              onDelete={(id) => void handleDelete(id)}
-              creating={createConversation.isPending}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="flex h-[min(70vh,720px)] flex-col">
-        <CardHeader className="shrink-0 pb-2">
-          <CardTitle>Chat</CardTitle>
-          <CardDescription>
-            Log meals, check goals, log weight, and ask for summaries in plain language.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            {!selectedId && !busy && !showOutgoing ? (
-              <SuggestedPrompts onSelect={(p) => void handleSend(p)} disabled={busy} />
-            ) : null}
-
-            {selectedId && messagesQuery.isLoading ? (
-              <LoadingState label="Loading messages…" />
-            ) : null}
-
-            {selectedId && messagesQuery.isError ? (
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-hidden",
+        listOpen && "lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4",
+      )}
+    >
+      {listOpen ? (
+        <section className="flex max-h-40 shrink-0 flex-col gap-2 overflow-hidden lg:max-h-none lg:min-h-0">
+          <h1 className="text-lg font-extrabold tracking-tight">Chat</h1>
+          <Button
+            type="button"
+            size="sm"
+            className="w-full"
+            onClick={() => void handleNewChat()}
+            disabled={createConversation.isPending}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New chat
+          </Button>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {conversationsQuery.isLoading ? <LoadingState label="Loading…" /> : null}
+            {conversationsQuery.isError ? (
               <ErrorState
-                message="Could not load messages."
-                onRetry={() => void messagesQuery.refetch()}
+                message="Could not load conversations."
+                onRetry={() => void conversationsQuery.refetch()}
               />
             ) : null}
-
-            {selectedId &&
-            !messagesQuery.isLoading &&
-            displayMessages.length === 0 &&
-            !showOutgoing ? (
-              <SuggestedPrompts onSelect={(p) => void handleSend(p)} disabled={busy} />
-            ) : null}
-
-            {displayMessages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-
-            {showOutgoing && outgoing ? (
-              <MessageBubble
-                message={{
-                  id: "outgoing",
-                  role: "user",
-                  content: outgoing.text,
-                  tool_calls: null,
-                  tool_call_id: null,
-                  created_at: "",
-                }}
+            {!conversationsQuery.isLoading && !conversationsQuery.isError ? (
+              <ConversationList
+                conversations={conversations}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onDelete={(id) => void handleDelete(id)}
               />
             ) : null}
-
-            {showOutgoing ? (
-              <div className="flex justify-start">
-                <TypingIndicator />
-              </div>
-            ) : null}
-
-            <div ref={bottomRef} />
           </div>
+        </section>
+      ) : null}
 
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b border-[#F0EBE3] px-3 py-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 px-0"
+            aria-expanded={listOpen}
+            aria-label={listOpen ? "Hide conversations" : "Show conversations"}
+            onClick={() => setListOpen((open) => !open)}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="min-w-0 flex-1 truncate text-sm font-bold">
+            {selected?.title || "New chat"}
+          </h2>
+          {!listOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void handleNewChat()}
+              disabled={createConversation.isPending}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New chat
+            </Button>
+          ) : null}
+          <p className="hidden text-[11px] text-muted-foreground lg:block">
+            Can log meals and weight, and read your goals and entries
+          </p>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+          {selectedId && messagesQuery.isLoading ? <LoadingState label="Loading messages…" /> : null}
+          {selectedId && messagesQuery.isError ? (
+            <ErrorState
+              message="Could not load messages."
+              onRetry={() => void messagesQuery.refetch()}
+            />
+          ) : null}
+          {!selectedId && !busy && threadEmpty ? (
+            <p className="m-auto max-w-sm text-center text-xs text-muted-foreground">
+              Ask about meals, goals, weight, or your week. A prompt below starts the chat.
+            </p>
+          ) : null}
+          {selectedId && !messagesQuery.isLoading && threadEmpty ? (
+            <p className="m-auto max-w-sm text-center text-xs text-muted-foreground">
+              Ask about meals, goals, weight, or your week. A prompt below starts the chat.
+            </p>
+          ) : null}
+
+          {displayMessages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+          {showOutgoing && outgoing ? (
+            <MessageBubble
+              message={{
+                id: "outgoing",
+                role: "user",
+                content: outgoing.text,
+                tool_calls: null,
+                tool_call_id: null,
+                created_at: "",
+              }}
+            />
+          ) : null}
+          {showOutgoing ? <TypingIndicator /> : null}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-[#F0EBE3] px-3 py-2.5">
+          <SuggestedPrompts onSelect={(prompt) => void handleSend(prompt)} disabled={busy} />
           <ChatComposer
             disabled={conversationsQuery.isError}
             sending={busy}
             onSend={(content) => void handleSend(content)}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

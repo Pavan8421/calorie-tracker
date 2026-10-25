@@ -29,7 +29,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-foreground/30"
         aria-label="Close dialog"
         onClick={onCancel}
       />
@@ -37,21 +37,22 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-card p-4"
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold">
+        <h2 id="confirm-dialog-title" className="text-sm font-bold">
           {title}
         </h2>
         {description ? (
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         ) : null}
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={confirming}>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={confirming}>
             {cancelLabel}
           </Button>
           <Button
             type="button"
             variant={destructive ? "destructive" : "default"}
+            size="sm"
             onClick={onConfirm}
             disabled={confirming}
           >

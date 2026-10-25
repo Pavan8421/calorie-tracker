@@ -1,71 +1,109 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 
-import { EmptyState } from "@/components/common/EmptyState";
-import { MEAL_TYPES } from "@/features/entries/types";
+import { MEAL_TYPES, type FoodEntry, type MealType } from "@/features/entries/types";
+import { MEAL_ADD_LABEL, MEAL_COLORS, MEAL_ORDER, formatKcal } from "@/features/dashboard/meals";
 import type { MealBreakdown } from "@/features/reports/types";
-import { formatDecimal } from "@/lib/numbers";
+import { formatDecimal, toNumber } from "@/lib/numbers";
 
 type TodayMealsProps = {
   byMeal: MealBreakdown[];
+  entries: FoodEntry[];
+  loading?: boolean;
 };
 
-const ORDER = ["breakfast", "lunch", "dinner", "snacks"] as const;
-
-export function TodayMeals({ byMeal }: TodayMealsProps) {
-  const navigate = useNavigate();
-  const byType = new Map(byMeal.map((m) => [m.meal_type, m]));
-  const hasAny = byMeal.some((m) => m.entry_count > 0);
-
-  if (!hasAny) {
-    return (
-      <EmptyState
-        title="No meals logged today"
-        description="Log breakfast, lunch, dinner, or a snack to see them here."
-        actionLabel="Log meal"
-        onAction={() => navigate("/log")}
-      />
-    );
-  }
+export function TodayMeals({ byMeal, entries, loading = false }: TodayMealsProps) {
+  const totals = new Map(byMeal.map((meal) => [meal.meal_type, meal]));
+  const foods = groupFoods(entries);
 
   return (
-    <ul className="space-y-3">
-      {ORDER.map((type) => {
-        const meal = byType.get(type);
-        const label = MEAL_TYPES.find((m) => m.value === type)?.label ?? type;
-        if (!meal || meal.entry_count === 0) {
+    <section className="flex flex-col rounded-2xl border border-border bg-card px-5 py-4">
+      <h2 className="mb-1 text-sm font-bold">Meals</h2>
+      <ul>
+        {MEAL_ORDER.map((type, index) => {
+          const meal = totals.get(type);
+          const names = foods.get(type) ?? [];
+          const logged = (meal?.entry_count ?? 0) > 0 || names.length > 0;
+          const label = MEAL_TYPES.find((item) => item.value === type)?.label ?? type;
+          const last = index === MEAL_ORDER.length - 1;
+
           return (
             <li
               key={type}
-              className="flex items-center justify-between rounded-lg border border-dashed border-border px-4 py-3 text-sm"
+              className={
+                last
+                  ? "flex items-center justify-between gap-3 py-1.5"
+                  : "flex items-center justify-between gap-3 border-b border-[#F0EBE3] py-1.5"
+              }
             >
-              <span className="text-muted-foreground">{label}</span>
-              <Link to="/log" className="text-primary hover:underline">
-                Add
-              </Link>
+              {logged ? (
+                <>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <MealDot color={MEAL_COLORS[type]} />
+                      {label}
+                    </span>
+                    <span className="truncate text-xs text-stone-700">
+                      {names.length > 0 ? names.join(", ") : loading ? "Loading foods…" : label}
+                    </span>
+                    {meal ? (
+                      <span className="text-xs text-muted-foreground">
+                        Protein {formatDecimal(meal.protein_g, 0)} g, carbs{" "}
+                        {formatDecimal(meal.carbs_g, 0)} g, fat {formatDecimal(meal.fat_g, 0)} g
+                      </span>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 text-sm font-bold">
+                    {formatKcal(toNumber(meal?.calories_kcal) ?? 0)} kcal
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <MealDot color={MEAL_COLORS[type]} hollow />
+                    {label}
+                  </span>
+                  {loading ? (
+                    <span className="text-sm text-muted-foreground">Loading…</span>
+                  ) : (
+                    <Link
+                      to={`/log?meal=${type}`}
+                      className="inline-flex min-h-8 items-center gap-1 text-sm font-semibold text-foreground no-underline hover:text-primary"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      {MEAL_ADD_LABEL[type]}
+                    </Link>
+                  )}
+                </>
+              )}
             </li>
           );
-        }
-        return (
-          <li
-            key={type}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm"
-          >
-            <div>
-              <p className="font-medium">{label}</p>
-              <p className="text-xs text-muted-foreground">
-                {meal.entry_count} {meal.entry_count === 1 ? "entry" : "entries"}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">{formatDecimal(meal.calories_kcal)} kcal</p>
-              <p className="text-xs text-muted-foreground">
-                P {formatDecimal(meal.protein_g)} · C {formatDecimal(meal.carbs_g)} · F{" "}
-                {formatDecimal(meal.fat_g)}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+        })}
+      </ul>
+    </section>
   );
+}
+
+function MealDot({ color, hollow = false }: { color: string; hollow?: boolean }) {
+  return (
+    <span
+      className="inline-block h-2.5 w-2.5 shrink-0 rounded-[3px]"
+      style={
+        hollow
+          ? { border: `1.5px solid ${color}` }
+          : { backgroundColor: color }
+      }
+      aria-hidden="true"
+    />
+  );
+}
+
+function groupFoods(entries: FoodEntry[]): Map<MealType, string[]> {
+  const grouped = new Map<MealType, string[]>();
+  for (const entry of entries) {
+    const names = grouped.get(entry.meal_type) ?? [];
+    if (!names.includes(entry.food_name)) names.push(entry.food_name);
+    grouped.set(entry.meal_type, names);
+  }
+  return grouped;
 }

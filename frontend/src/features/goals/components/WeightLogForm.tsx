@@ -1,17 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateWeightLog } from "@/features/goals/hooks";
 import { weightLogSchema, type WeightLogFormValues } from "@/features/goals/schemas";
 import { applyApiFieldErrors } from "@/lib/formErrors";
 
+const fieldClass = "h-9 rounded-xl px-3 text-xs font-medium";
+
 export function WeightLogForm() {
   const createLog = useCreateWeightLog();
   const {
     register,
+    control,
     handleSubmit,
     setError,
     reset,
@@ -37,40 +41,57 @@ export function WeightLogForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="weight_kg" required>
-            Weight (kg)
+    <form
+      className="flex flex-col gap-2 border-t border-[#F0EBE3] pt-3"
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+    >
+      <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="weight_kg" required className="text-xs">
+            Log today’s weight, kg
           </Label>
           <Input
             id="weight_kg"
             type="number"
             step="0.01"
+            className={fieldClass}
             {...register("weight_kg")}
             aria-invalid={Boolean(errors.weight_kg)}
           />
-          {errors.weight_kg ? (
-            <p className="text-xs text-destructive">{errors.weight_kg.message}</p>
-          ) : null}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="logged_on">Date (optional)</Label>
-          <Input
-            id="logged_on"
-            type="date"
-            {...register("logged_on")}
-            aria-invalid={Boolean(errors.logged_on)}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="logged_on" className="text-xs">
+            Date
+          </Label>
+          <Controller
+            control={control}
+            name="logged_on"
+            render={({ field }) => (
+              <DatePicker
+                id="logged_on"
+                name={field.name}
+                value={field.value ?? ""}
+                placeholder="Today"
+                clearable
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-invalid={Boolean(errors.logged_on)}
+              />
+            )}
           />
-          {errors.logged_on ? (
-            <p className="text-xs text-destructive">{errors.logged_on.message}</p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">Defaults to today in your timezone.</p>
         </div>
+        <Button type="submit" size="sm" disabled={createLog.isPending}>
+          {createLog.isPending ? "Saving..." : "Log weight"}
+        </Button>
       </div>
-      <Button type="submit" disabled={createLog.isPending}>
-        {createLog.isPending ? "Saving..." : "Log weight"}
-      </Button>
+      {errors.weight_kg ? (
+        <p className="text-[11px] text-destructive">{errors.weight_kg.message}</p>
+      ) : null}
+      {errors.logged_on ? (
+        <p className="text-[11px] text-destructive">{errors.logged_on.message}</p>
+      ) : null}
+      <p className="text-[11px] text-muted-foreground">Date defaults to today. Logging again updates that day.</p>
     </form>
   );
 }

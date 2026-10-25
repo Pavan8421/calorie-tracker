@@ -11,9 +11,9 @@ type MicronutrientSummaryProps = {
 };
 
 function statusColor(status: MicroStatus | null): string {
-  if (status === "low") return "bg-amber-500";
-  if (status === "high") return "bg-rose-500";
-  if (status === "adequate") return "bg-teal-600";
+  if (status === "low") return "bg-[#E3A828]";
+  if (status === "high") return "bg-destructive";
+  if (status === "adequate") return "bg-primary";
   return "bg-muted-foreground";
 }
 
@@ -45,44 +45,53 @@ export function MicronutrientSummary({ range }: MicronutrientSummaryProps) {
     );
   }
 
+  const missingValue = nutrients.some((nutrient) => nutrient.percent_daily_value == null);
+
   return (
-    <ul className="space-y-4">
-      {nutrients.map((n) => {
-        const pct = n.percent_daily_value ?? 0;
-        const width = Math.min(100, Math.max(0, pct));
-        return (
-          <li key={n.code} className="space-y-1.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium">
-                {n.name}{" "}
-                <span className="font-normal text-muted-foreground">({n.unit})</span>
-              </span>
-              <span className="text-muted-foreground">
-                avg {formatDecimal(n.daily_average, 2)}
-                {n.percent_daily_value != null
-                  ? ` · ${n.percent_daily_value.toFixed(0)}% DV`
-                  : ""}
-                {" · "}
-                <span
-                  className={cn(
-                    n.status === "low" && "text-amber-700",
-                    n.status === "adequate" && "text-teal-800",
-                    n.status === "high" && "text-rose-700",
-                  )}
-                >
-                  {statusLabel(n.status)}
+    <div className="flex flex-col gap-3">
+      <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+        {nutrients.map((nutrient) => {
+          const pct = nutrient.percent_daily_value ?? 0;
+          const width = Math.min(100, Math.max(0, pct));
+          return (
+            <li key={nutrient.code} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="font-semibold">
+                  {nutrient.name}{" "}
+                  <span className="font-normal text-muted-foreground">{nutrient.unit}</span>
                 </span>
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full rounded-full transition-all", statusColor(n.status))}
-                style={{ width: `${width}%` }}
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+                <span className="text-muted-foreground">
+                  {formatDecimal(nutrient.daily_average, 1)}
+                  {nutrient.percent_daily_value != null
+                    ? ` · ${nutrient.percent_daily_value.toFixed(0)}%`
+                    : ""}
+                  {" · "}
+                  <span
+                    className={cn(
+                      nutrient.status === "low" && "text-[#9A5B0B]",
+                      nutrient.status === "adequate" && "text-primary",
+                      nutrient.status === "high" && "text-destructive",
+                    )}
+                  >
+                    {statusLabel(nutrient.status)}
+                  </span>
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-ring-track">
+                <div
+                  className={cn("h-full rounded-full", statusColor(nutrient.status))}
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {missingValue ? (
+        <p className="text-[11px] text-muted-foreground">
+          Some entries have no micronutrient data, so these averages can be incomplete.
+        </p>
+      ) : null}
+    </div>
   );
 }

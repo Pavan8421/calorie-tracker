@@ -3,14 +3,17 @@ import { useId, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  DATE_FORMAT_OPTIONS,
-  type DateFormat,
-} from "@/features/imports/types";
+import { Select } from "@/components/ui/select";
+import { type DateFormat } from "@/features/imports/types";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED = "application/pdf,.pdf";
 const MAX_BYTES = 10 * 1024 * 1024;
+
+const FORMAT_OPTIONS = [
+  { value: "DMY", label: "Day / month / year, 24/10/2026" },
+  { value: "MDY", label: "Month / day / year, 10/24/2026" },
+];
 
 type ImportUploadProps = {
   disabled?: boolean;
@@ -48,47 +51,44 @@ export function ImportUpload({ disabled, isUploading, onUpload }: ImportUploadPr
     setFile(next);
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
     if (!file || disabled || isUploading) return;
     onUpload(file, dateFormat);
   }
 
   return (
-    <form className="grid gap-4" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
       <div
         className={cn(
-          "flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-10 text-center transition-colors",
-          dragOver && "border-primary bg-primary/5",
+          "flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-strong bg-surface px-4 py-6 text-center",
+          dragOver && "border-primary bg-primary-soft/40",
           (disabled || isUploading) && "opacity-60",
         )}
-        onDragEnter={(e) => {
-          e.preventDefault();
+        onDragEnter={(event) => {
+          event.preventDefault();
           setDragOver(true);
         }}
-        onDragOver={(e) => {
-          e.preventDefault();
+        onDragOver={(event) => {
+          event.preventDefault();
           setDragOver(true);
         }}
-        onDragLeave={(e) => {
-          e.preventDefault();
+        onDragLeave={(event) => {
+          event.preventDefault();
           setDragOver(false);
         }}
-        onDrop={(e) => {
-          e.preventDefault();
+        onDrop={(event) => {
+          event.preventDefault();
           setDragOver(false);
-          const dropped = e.dataTransfer.files?.[0] ?? null;
-          pickFile(dropped);
+          pickFile(event.dataTransfer.files?.[0] ?? null);
         }}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-          <Upload className="h-5 w-5 text-muted-foreground" aria-hidden />
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+          <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
         </div>
-        <div className="grid gap-1">
-          <p className="text-sm font-medium">Drop a food diary PDF here</p>
-          <p className="text-xs text-muted-foreground">
-            Or choose a file · PDF only · max 10 MB · up to 20 pages
-          </p>
+        <div>
+          <p className="text-xs font-semibold">Drop a food diary PDF here</p>
+          <p className="text-[11px] text-muted-foreground">PDF only · max 10 MB · up to 20 pages</p>
         </div>
         <input
           ref={inputRef}
@@ -97,7 +97,7 @@ export function ImportUpload({ disabled, isUploading, onUpload }: ImportUploadPr
           accept={ACCEPTED}
           className="sr-only"
           disabled={disabled || isUploading}
-          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          onChange={(event) => pickFile(event.target.files?.[0] ?? null)}
         />
         <Button
           type="button"
@@ -109,40 +109,37 @@ export function ImportUpload({ disabled, isUploading, onUpload }: ImportUploadPr
           Choose PDF
         </Button>
         {file ? (
-          <p className="flex items-center gap-2 text-sm text-foreground">
-            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="truncate max-w-[280px]">{file.name}</span>
-            <span className="text-xs text-muted-foreground">
+          <p className="flex max-w-full items-center gap-1.5 text-xs">
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="truncate">{file.name}</span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">
               ({(file.size / 1024).toFixed(0)} KB)
             </span>
           </p>
         ) : null}
       </div>
 
-      {localError ? <p className="text-sm text-destructive">{localError}</p> : null}
+      {localError ? <p className="text-[11px] text-destructive">{localError}</p> : null}
 
-      <div className="grid gap-2">
-        <Label htmlFor={formatId}>Date format in the PDF</Label>
-        <select
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={formatId} className="text-xs">
+          Dates in this PDF are
+        </Label>
+        <Select
           id={formatId}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={dateFormat}
           disabled={disabled || isUploading}
-          onChange={(e) => setDateFormat(e.target.value as DateFormat)}
-        >
-          {DATE_FORMAT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label} ({opt.hint})
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-muted-foreground">
+          options={FORMAT_OPTIONS}
+          onChange={(value) => setDateFormat(value as DateFormat)}
+          className="h-9 text-xs"
+        />
+        <p className="text-[11px] text-muted-foreground">
           Used to parse ambiguous dates like 03/04/2026.
         </p>
       </div>
 
-      <Button type="submit" disabled={!file || disabled || isUploading}>
-        {isUploading ? "Uploading…" : "Upload & parse"}
+      <Button type="submit" size="sm" className="w-fit" disabled={!file || disabled || isUploading}>
+        {isUploading ? "Uploading…" : "Upload and parse"}
       </Button>
     </form>
   );

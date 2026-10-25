@@ -1,9 +1,10 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import type { EntryFormValues } from "@/features/entries/schemas";
 import type { Nutrient } from "@/features/entries/types";
 
@@ -62,16 +63,25 @@ export function MicronutrientFields({ nutrients }: MicronutrientFieldsProps) {
           return (
             <div key={field.id} className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
               <div className="space-y-1">
-                <select
-                  className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  {...register(`micronutrients.${index}.code`)}
-                >
-                  {available.map((n) => (
-                    <option key={n.code} value={n.code}>
-                      {n.name}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  control={control}
+                  name={`micronutrients.${index}.code`}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      options={available.map((nutrientOption) => ({
+                        value: nutrientOption.code,
+                        label: nutrientOption.name,
+                      }))}
+                      searchable
+                      searchPlaceholder="Search nutrients"
+                      className="h-10 text-sm"
+                      aria-invalid={Boolean(errors.micronutrients?.[index]?.code)}
+                    />
+                  )}
+                />
                 {errors.micronutrients?.[index]?.code ? (
                   <p className="text-xs text-destructive">
                     {errors.micronutrients[index]?.code?.message}

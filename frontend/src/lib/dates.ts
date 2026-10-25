@@ -5,6 +5,12 @@ export function formatDateISO(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/** Parse a `YYYY-MM-DD` value as a local calendar day. */
+export function parseLocalDate(iso: string): Date {
+  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
 export function todayISO(): string {
   return formatDateISO(new Date());
 }

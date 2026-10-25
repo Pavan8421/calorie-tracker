@@ -1,11 +1,10 @@
-import { Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Camera, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
-import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteEntryDialog } from "@/features/entries/components/DeleteEntryDialog";
 import { EditEntryDialog } from "@/features/entries/components/EditEntryDialog";
 import { EntryForm } from "@/features/entries/components/EntryForm";
@@ -15,7 +14,7 @@ import {
   emptyEntryFormValues,
   recentFoodToFormValues,
 } from "@/features/entries/formDefaults";
-import { useCreateEntry, useRecentEntries } from "@/features/entries/hooks";
+import { useCreateEntry, useEntries } from "@/features/entries/hooks";
 import type { EntryFormValues } from "@/features/entries/schemas";
 import type {
   ClientEntrySource,
@@ -24,15 +23,44 @@ import type {
   MealType,
 } from "@/features/entries/types";
 import { MEAL_TYPES } from "@/features/entries/types";
+import { useDailySummary } from "@/features/reports/hooks";
 import { ScanPhotoDialog } from "@/features/scan/components/ScanPhotoDialog";
 import type { DraftFoodItem } from "@/features/scan/types";
+import { todayISO } from "@/lib/dates";
 import { formatDecimal } from "@/lib/numbers";
 
+function mealFromParam(value: string | null): MealType | null {
+  if (!value) return null;
+  return MEAL_TYPES.some((meal) => meal.value === value) ? (value as MealType) : null;
+}
+
+function formForMeal(meal: MealType | null): EntryFormValues {
+  const blank = emptyEntryFormValues();
+  return meal ? { ...blank, meal_type: meal } : blank;
+}
+
 export function LogMealPage() {
+  const [searchParams] = useSearchParams();
+  const presetMeal = mealFromParam(searchParams.get("meal"));
   const createEntry = useCreateEntry();
-  const recent = useRecentEntries(1, 20);
-  const [formValues, setFormValues] = useState<EntryFormValues>(emptyEntryFormValues());
+  const summary = useDailySummary();
+  const day = summary.data?.date ?? todayISO();
+  const todayEntries = useEntries({
+    start_date: day,
+    end_date: day,
+    meal_types: [],
+    page: 1,
+    page_size: 20,
+  });
+  const [formValues, setFormValues] = useState<EntryFormValues>(() => formForMeal(presetMeal));
   const [formKey, setFormKey] = useState(0);
+
+  useEffect(() => {
+    if (!presetMeal) return;
+    setFormValues((current) =>
+      current.meal_type === presetMeal ? current : { ...current, meal_type: presetMeal },
+    );
+  }, [presetMeal]);
   const [entrySource, setEntrySource] = useState<ClientEntrySource>("manual");
   const [scanOpen, setScanOpen] = useState(false);
   const [editing, setEditing] = useState<FoodEntry | null>(null);
@@ -40,7 +68,7 @@ export function LogMealPage() {
 
   async function handleCreate(payload: FoodEntryCreatePayload) {
     await createEntry.mutateAsync(payload);
-    setFormValues(emptyEntryFormValues());
+    setFormValues(formForMeal(presetMeal));
     setEntrySource("manual");
     setFormKey((k) => k + 1);
   }
@@ -52,139 +80,129 @@ export function LogMealPage() {
   }
 
   function applyDraft(item: DraftFoodItem, analysisNotes: string) {
-    setFormValues(
-      draftToFormValues(item, formValues.meal_type as MealType, analysisNotes),
-    );
+    setFormValues(draftToFormValues(item, formValues.meal_type as MealType, analysisNotes));
     setEntrySource("ai_image");
     setFormKey((k) => k + 1);
   }
 
-  return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent foods</CardTitle>
-          <CardDescription>Click a food to pre-fill the form below.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RecentFoodsPicker onSelect={applyRecent} />
-        </CardContent>
-      </Card>
+  const logged = todayEntries.data?.items ?? [];
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
-            <CardTitle>Log meal</CardTitle>
-            <CardDescription>
-              Enter meal details manually, or scan a label / plate photo.
-              {entrySource === "ai_image" ? (
-                <span className="mt-1 block text-teal-800">
-                  Form pre-filled from AI scan — review and save.
-                </span>
-              ) : null}
-            </CardDescription>
-          </div>
-          <Button type="button" variant="outline" onClick={() => setScanOpen(true)}>
-            Scan photo
-          </Button>
-        </CardHeader>
-        <CardContent>
+  return (
+    <div className="flex flex-col gap-2 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+      <div className="flex shrink-0 flex-col gap-0.5">
+        <h1 className="text-lg font-extrabold tracking-tight">Log meal</h1>
+        <p className="text-xs text-muted-foreground">
+          Pick a recent food, scan a photo, or enter it yourself.
+        </p>
+        {entrySource === "ai_image" ? (
+          <p className="text-xs font-medium text-primary">
+            Form pre-filled from a photo. Review the numbers, then save.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid min-h-0 flex-1 items-stretch gap-3 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:overflow-hidden">
+        <section className="overflow-y-auto rounded-2xl border border-border bg-card px-3 py-3 sm:px-4">
           <EntryForm
             key={formKey}
             initialValues={formValues}
             source={entrySource}
-            submitLabel="Log meal"
+            showImpact
             onSubmit={handleCreate}
           />
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recently logged</CardTitle>
-          <CardDescription>Edit or delete a recent entry (one row per food name).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recent.isLoading ? <LoadingState label="Loading entries..." /> : null}
-          {recent.isError ? (
-            <ErrorState
-              message="Could not load recent entries."
-              onRetry={() => void recent.refetch()}
-            />
-          ) : null}
-          {recent.data && recent.data.items.length === 0 ? (
-            <EmptyState
-              title="No entries yet"
-              description="Log your first meal using the form above."
-            />
-          ) : null}
-          {recent.data && recent.data.items.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="border-b border-border bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Food</th>
-                    <th className="px-3 py-2 font-medium">Meal</th>
-                    <th className="px-3 py-2 font-medium">When</th>
-                    <th className="px-3 py-2 font-medium">Calories</th>
-                    <th className="px-3 py-2 font-medium" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.data.items.map((entry) => (
-                    <tr key={entry.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2 font-medium">{entry.food_name}</td>
-                      <td className="px-3 py-2 capitalize">
-                        {MEAL_TYPES.find((m) => m.value === entry.meal_type)?.label ??
-                          entry.meal_type}
-                      </td>
-                      <td className="px-3 py-2">{entry.consumed_on}</td>
-                      <td className="px-3 py-2">{formatDecimal(entry.calories_kcal)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 px-0 text-primary hover:bg-primary/10 hover:text-primary"
-                            aria-label={`Edit ${entry.food_name}`}
-                            title="Edit"
-                            onClick={() => setEditing(entry)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Delete ${entry.food_name}`}
-                            title="Delete"
-                            onClick={() => setDeleting(entry)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="flex min-h-0 flex-col gap-2">
+          <div className="grid shrink-0 grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              className="flex min-h-16 flex-col items-start justify-between gap-1 rounded-xl bg-primary-deep px-3 py-2.5 text-left text-primary-foreground"
+            >
+              <Camera className="h-4 w-4" aria-hidden="true" />
+              <span>
+                <span className="block text-xs font-bold">Scan a photo</span>
+                <span className="block text-[11px] text-[#C5E8E2]">Plate or nutrition label</span>
+              </span>
+            </button>
+            <Link
+              to="/chat"
+              className="flex min-h-16 flex-col items-start justify-between gap-1 rounded-xl border border-border bg-card px-3 py-2.5 text-foreground no-underline"
+            >
+              <MessageSquare className="h-4 w-4 text-primary" aria-hidden="true" />
+              <span>
+                <span className="block text-xs font-bold">Describe in chat</span>
+                <span className="block text-[11px] text-muted-foreground">“2 idlis and sambar”</span>
+              </span>
+            </Link>
+          </div>
+
+          <RecentFoodsPicker onSelect={applyRecent} />
+
+          <section className="flex max-h-36 shrink-0 flex-col gap-1 overflow-hidden rounded-2xl border border-border bg-card px-3 py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-bold">Logged today</h2>
+              <Link to="/entries" className="text-xs font-semibold text-foreground no-underline hover:text-primary">
+                All entries
+              </Link>
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            {todayEntries.isLoading ? <LoadingState label="Loading today’s meals..." /> : null}
+            {todayEntries.isError ? (
+              <ErrorState
+                message="Could not load today’s meals."
+                onRetry={() => void todayEntries.refetch()}
+              />
+            ) : null}
+            {!todayEntries.isLoading && !todayEntries.isError && logged.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nothing logged yet today.</p>
+            ) : null}
+            {logged.length > 0 ? (
+              <ul className="min-h-0 flex-1 overflow-y-auto">
+                {logged.map((entry) => (
+                  <li key={entry.id} className="flex items-center justify-between gap-2 py-1">
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-semibold">{entry.food_name}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {MEAL_TYPES.find((meal) => meal.value === entry.meal_type)?.label ??
+                          entry.meal_type}
+                        , {formatDecimal(entry.quantity, 0)} {entry.unit}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      <span className="text-xs font-bold">
+                        {formatDecimal(entry.calories_kcal, 0)} kcal
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 px-0"
+                        aria-label={`Edit ${entry.food_name}`}
+                        onClick={() => setEditing(entry)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Delete ${entry.food_name}`}
+                        onClick={() => setDeleting(entry)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        </div>
+      </div>
 
-      <ScanPhotoDialog
-        open={scanOpen}
-        onClose={() => setScanOpen(false)}
-        onUseDraft={applyDraft}
-      />
-      <EditEntryDialog
-        entry={editing}
-        open={Boolean(editing)}
-        onClose={() => setEditing(null)}
-      />
+      <ScanPhotoDialog open={scanOpen} onClose={() => setScanOpen(false)} onUseDraft={applyDraft} />
+      <EditEntryDialog entry={editing} open={Boolean(editing)} onClose={() => setEditing(null)} />
       <DeleteEntryDialog
         entry={deleting}
         open={Boolean(deleting)}

@@ -1,4 +1,4 @@
-import { Upload } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -91,7 +91,7 @@ export function ScanPhotoDialog({ open, onClose, onUseDraft }: ScanPhotoDialogPr
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-foreground/30"
         aria-label="Close dialog"
         onClick={onClose}
       />
@@ -99,20 +99,26 @@ export function ScanPhotoDialog({ open, onClose, onUseDraft }: ScanPhotoDialogPr
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-photo-title"
-        className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg"
+        className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-lg"
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <h2 id="scan-photo-title" className="text-lg font-semibold">
-              Scan photo
+            <h2 id="scan-photo-title" className="text-base font-extrabold tracking-tight">
+              Scan a photo
             </h2>
-            <p className="text-sm text-muted-foreground">
-              Upload a nutrition label or plate photo. No camera capture — file picker or drag
-              and drop only.
+            <p className="text-xs text-muted-foreground">
+              Drop a plate or nutrition label. JPEG, PNG, or WebP, up to 5 MB.
             </p>
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Close
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 p-0"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
@@ -136,28 +142,35 @@ export function ScanPhotoDialog({ open, onClose, onUseDraft }: ScanPhotoDialogPr
         ) : null}
 
         {!analyze.isPending && !analysis ? (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Image type hint</Label>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {ANALYZE_HINTS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setHint(option.value)}
-                    className={cn(
-                      "rounded-md border px-3 py-2 text-left text-sm transition-colors",
-                      hint === option.value
-                        ? "border-primary bg-accent font-medium text-teal-900"
-                        : "border-border hover:bg-muted",
-                    )}
-                  >
-                    <span className="block">{option.label}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {option.description}
-                    </span>
-                  </button>
-                ))}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label id="scan-hint-label" className="text-xs font-semibold">
+                What is in the photo?
+              </Label>
+              <div
+                role="group"
+                aria-labelledby="scan-hint-label"
+                className="grid grid-cols-3 gap-1 rounded-xl bg-ring-track p-1"
+              >
+                {ANALYZE_HINTS.map((option) => {
+                  const selected = hint === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setHint(option.value)}
+                      className={cn(
+                        "h-8 rounded-lg text-xs",
+                        selected
+                          ? "bg-card font-bold text-primary-ink shadow-sm"
+                          : "font-medium text-stone-700 hover:text-foreground",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -190,15 +203,15 @@ export function ScanPhotoDialog({ open, onClose, onUseDraft }: ScanPhotoDialogPr
                 pickFile(dropped);
               }}
               className={cn(
-                "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center transition-colors",
+                "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-6 text-center transition-colors",
                 dragOver
-                  ? "border-primary bg-accent/60"
-                  : "border-border bg-muted/30 hover:bg-muted/50",
+                  ? "border-primary bg-primary-soft"
+                  : "border-border-strong bg-surface hover:bg-muted",
               )}
             >
-              <Upload className="h-8 w-8 text-muted-foreground" aria-hidden />
-              <p className="text-sm font-medium">Drag and drop an image here</p>
-              <p className="text-xs text-muted-foreground">or click to choose a file (JPEG, PNG, WebP · max 5 MB)</p>
+              <Upload className="h-5 w-5 text-primary" aria-hidden />
+              <p className="text-xs font-semibold">Drag and drop an image here</p>
+              <p className="text-[11px] text-muted-foreground">or click to choose a file</p>
               <input
                 ref={inputRef}
                 id={inputId}
@@ -218,16 +231,16 @@ export function ScanPhotoDialog({ open, onClose, onUseDraft }: ScanPhotoDialogPr
                 <img
                   src={previewUrl}
                   alt="Selected preview"
-                  className="max-h-56 w-full rounded-lg border border-border object-contain bg-muted/40"
+                  className="max-h-36 w-full rounded-xl border border-border bg-surface object-contain"
                 />
               </div>
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => void runAnalyze()} disabled={!file}>
+              <Button type="button" size="sm" onClick={() => void runAnalyze()} disabled={!file}>
                 Analyze image
               </Button>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
                 Cancel
               </Button>
             </div>

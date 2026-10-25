@@ -1,24 +1,19 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { format } from "date-fns";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { useGoalComparison } from "@/features/reports/hooks";
 import type { ReportRangeParams } from "@/features/reports/types";
+import { parseLocalDate } from "@/lib/dates";
 import { toNumber } from "@/lib/numbers";
 
 type GoalComparisonChartProps = {
   range: ReportRangeParams;
 };
+
+const AXIS = { fontSize: 11, fill: "#6B635C" };
 
 export function GoalComparisonChart({ range }: GoalComparisonChartProps) {
   const query = useGoalComparison(range);
@@ -33,16 +28,8 @@ export function GoalComparisonChart({ range }: GoalComparisonChartProps) {
     );
   }
 
-  const data = query.data!;
-  const chartRows = data.days
-    .filter((d) => d.goal != null)
-    .map((d) => ({
-      day: d.day.slice(5),
-      actual: toNumber(d.actual.calories_kcal) ?? 0,
-      goal: d.goal?.calories_kcal ?? 0,
-    }));
-
-  if (chartRows.length === 0) {
+  const days = query.data!.days.filter((day) => day.goal != null);
+  if (days.length === 0) {
     return (
       <EmptyState
         title="No goal comparison"
@@ -51,63 +38,50 @@ export function GoalComparisonChart({ range }: GoalComparisonChartProps) {
     );
   }
 
-  const summary = data.summary;
+  const chartRows = days.map((day) => ({
+    day: day.day.slice(5),
+    actual: toNumber(day.actual.calories_kcal) ?? 0,
+    goal: day.goal?.calories_kcal ?? 0,
+  }));
+  const recent = [...days].reverse().slice(0, 4);
 
   return (
-    <div className="space-y-4">
-      <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
-          label="Days with goal"
-          value={String(summary.days_with_goal)}
-        />
-        <Stat
-          label="Avg actual"
-          value={
-            summary.avg_actual_calories != null
-              ? `${Math.round(summary.avg_actual_calories)} kcal`
-              : "—"
-          }
-        />
-        <Stat
-          label="Avg goal"
-          value={
-            summary.avg_goal_calories != null
-              ? `${Math.round(summary.avg_goal_calories)} kcal`
-              : "—"
-          }
-        />
-        <Stat
-          label="Adherence (±10%)"
-          value={
-            summary.adherence_pct != null
-              ? `${summary.adherence_pct.toFixed(0)}% (${summary.days_within_10_pct} days)`
-              : "—"
-          }
-        />
-      </dl>
-
-      <div className="h-72 w-full">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <ul className="flex flex-col">
+        {recent.map((day) => {
+          const actual = toNumber(day.actual.calories_kcal) ?? 0;
+          const goal = day.goal?.calories_kcal ?? 0;
+          return (
+            <li
+              key={day.day}
+              className="flex items-baseline justify-between gap-3 border-b border-[#F0EBE3] py-2 last:border-0"
+            >
+              <span className="text-xs font-semibold">
+                {format(parseLocalDate(day.day), "EEE d MMM")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                <span className="font-bold text-foreground">{Math.round(actual).toLocaleString()}</span>
+                {" of "}
+                {Math.round(goal).toLocaleString()} kcal
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e7e0d5" />
-            <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
+          <BarChart data={chartRows} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <XAxis dataKey="day" tick={AXIS} axisLine={false} tickLine={false} />
+            <YAxis tick={AXIS} axisLine={false} tickLine={false} width={36} />
             <Tooltip />
-            <Legend />
-            <Bar dataKey="actual" name="Actual" fill="#0f766e" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="goal" name="Goal" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="actual" name="Eaten" fill="#0F766E" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="goal" name="Goal" fill="#E7E0D5" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border px-3 py-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
+      <p className="text-[11px] text-muted-foreground lg:col-span-2">
+        A day counts as on target within 10% of the goal.
+      </p>
     </div>
   );
 }

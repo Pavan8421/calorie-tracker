@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { SUGGESTED_PROMPTS } from "@/features/chat/types";
 
 type SuggestedPromptsProps = {
@@ -8,25 +7,19 @@ type SuggestedPromptsProps = {
 
 export function SuggestedPrompts({ onSelect, disabled }: SuggestedPromptsProps) {
   return (
-    <div className="mx-auto max-w-lg space-y-3 px-2 py-6 text-center">
-      <p className="text-sm text-muted-foreground">
-        Ask anything about logging meals, goals, weight, or summaries.
-      </p>
-      <ul className="flex flex-col gap-2">
-        {SUGGESTED_PROMPTS.map((prompt) => (
-          <li key={prompt}>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto w-full whitespace-normal px-3 py-2 text-left text-sm font-normal"
-              disabled={disabled}
-              onClick={() => onSelect(prompt)}
-            >
-              {prompt}
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="flex flex-wrap gap-1.5">
+      {SUGGESTED_PROMPTS.map((prompt) => (
+        <li key={prompt}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelect(prompt)}
+            className="h-7 rounded-full border border-border bg-card px-2.5 text-[11px] font-medium text-stone-700 hover:bg-muted disabled:opacity-50"
+          >
+            {prompt}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
