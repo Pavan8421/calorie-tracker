@@ -27,9 +27,19 @@ os.environ.setdefault("ENVIRONMENT", "local")
 from app.api.deps import get_db
 from app.core import redis as redis_module
 from app.core.config import get_settings
+from app.core.redis import set_enqueue_override
 from app.db.base import Base
 from app.main import create_app
-from app.models import FoodEntry, Goal, RefreshToken, User, WeightLog  # noqa: F401
+from app.models import (  # noqa: F401
+    ChatConversation,
+    ChatMessage,
+    FoodEntry,
+    Goal,
+    ImportJob,
+    RefreshToken,
+    User,
+    WeightLog,
+)
 
 get_settings.cache_clear()
 
@@ -46,7 +56,13 @@ async def app():
     application = create_app()
     fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
     redis_module._redis = fake
+
+    async def _noop_enqueue(_job_id: object) -> None:
+        return None
+
+    set_enqueue_override(_noop_enqueue)
     yield application
+    set_enqueue_override(None)
     await fake.aclose()
     redis_module._redis = None
     application.dependency_overrides.clear()
@@ -58,6 +74,8 @@ async def client(app) -> AsyncIterator[AsyncClient]:
     engine = create_async_engine(_test_database_url(), poolclass=NullPool)
 
     async with engine.begin() as conn:
+        # Recreate so additive model changes (new columns) appear in the test DB.
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     async with engine.connect() as connection:
@@ -72,6 +90,7 @@ async def client(app) -> AsyncIterator[AsyncClient]:
             yield session
 
         app.dependency_overrides[get_db] = override_get_db
+        app.state.test_db_session = session
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -80,6 +99,8 @@ async def client(app) -> AsyncIterator[AsyncClient]:
         await session.close()
         await transaction.rollback()
         app.dependency_overrides.pop(get_db, None)
+        if hasattr(app.state, "test_db_session"):
+            delattr(app.state, "test_db_session")
 
     await engine.dispose()
 

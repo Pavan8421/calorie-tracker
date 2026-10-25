@@ -10,8 +10,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
+    from app.models.chat import ChatConversation
     from app.models.food_entry import FoodEntry
     from app.models.goal import Goal
+    from app.models.import_job import ImportJob
     from app.models.refresh_token import RefreshToken
     from app.models.weight_log import WeightLog
 
@@ -46,6 +48,16 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     food_entries: Mapped[list[FoodEntry]] = relationship(
         "FoodEntry",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    chat_conversations: Mapped[list[ChatConversation]] = relationship(
+        "ChatConversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    import_jobs: Mapped[list[ImportJob]] = relationship(
+        "ImportJob",
         back_populates="user",
         cascade="all, delete-orphan",
     )

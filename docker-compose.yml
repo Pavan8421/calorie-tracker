@@ -51,6 +51,25 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://calorie:calorie@postgres:5432/calorie_tracker
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: arq app.workers.main.WorkerSettings
+    volumes:
+      - ./backend/app:/app/app
+
   frontend:
     build:
       context: ./frontend

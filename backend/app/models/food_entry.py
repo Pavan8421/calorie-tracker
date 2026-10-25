@@ -27,6 +27,7 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.enums import EntrySource, MealType
 
 if TYPE_CHECKING:
+    from app.models.import_job import ImportJob
     from app.models.user import User
 
 
@@ -91,5 +92,15 @@ class FoodEntry(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         server_default=EntrySource.manual.value,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    import_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("import_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     user: Mapped[User] = relationship("User", back_populates="food_entries")
+    import_job: Mapped[ImportJob | None] = relationship(
+        "ImportJob",
+        back_populates="food_entries",
+    )

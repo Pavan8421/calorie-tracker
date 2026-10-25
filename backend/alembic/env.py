@@ -14,7 +14,16 @@ from app.core.config import get_settings
 from app.db.base import Base
 
 # Import models so Alembic autogenerate sees their tables on Base.metadata.
-from app.models import Goal, RefreshToken, User, WeightLog  # noqa: F401
+from app.models import (  # noqa: F401
+    ChatConversation,
+    ChatMessage,
+    FoodEntry,
+    Goal,
+    ImportJob,
+    RefreshToken,
+    User,
+    WeightLog,
+)
 
 config = context.config
 if config.config_file_name is not None:

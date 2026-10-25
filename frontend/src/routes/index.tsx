@@ -7,8 +7,9 @@ import { SettingsPage } from "@/features/auth/pages/SettingsPage";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { EntriesPage } from "@/features/entries/pages/EntriesPage";
 import { LogMealPage } from "@/features/entries/pages/LogMealPage";
+import { ChatPage } from "@/features/chat/pages/ChatPage";
 import { GoalsPage } from "@/features/goals/pages/GoalsPage";
-import { PlaceholderPage } from "@/features/placeholders/PlaceholderPage";
+import { ImportPage } from "@/features/imports/pages/ImportPage";
 import { ReportsPage } from "@/features/reports/pages/ReportsPage";
 import { GuestRoute, ProtectedRoute } from "@/routes/ProtectedRoute";
 
@@ -27,21 +28,8 @@ export function AppRoutes() {
           <Route path="entries" element={<EntriesPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="goals" element={<GoalsPage />} />
-          <Route
-            path="chat"
-            element={
-              <PlaceholderPage
-                title="Chat"
-                description="Natural-language assistant for logging and summaries."
-              />
-            }
-          />
-          <Route
-            path="import"
-            element={
-              <PlaceholderPage title="Import" description="Bulk import food diary PDFs." />
-            }
-          />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="import" element={<ImportPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

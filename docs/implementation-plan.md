@@ -566,7 +566,7 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users perform every app action through natural language.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -597,9 +597,9 @@ alembic upgrade head              # apply migrations
 - Conversations and messages are user-scoped and paginated.
 
 **Done when**
-- [ ] Through chat alone, a user can log a meal, check goals, set goals, log weight, ask a nutrition question, and get a weekly summary.
-- [ ] Actions taken in chat appear immediately in the dashboard and entries list.
-- [ ] All checks pass.
+- [x] Through chat alone, a user can log a meal, check goals, set goals, log weight, ask a nutrition question, and get a weekly summary.
+- [x] Actions taken in chat appear immediately in the dashboard and entries list.
+- [x] All checks pass.
 
 **Commit:** `feat(chat): LangChain tool-calling assistant over existing services`
 
@@ -609,7 +609,7 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users upload a tabular food diary PDF, review parsed rows, and import them.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
@@ -643,9 +643,9 @@ alembic upgrade head              # apply migrations
 - Isolation: other user's import → `404`.
 
 **Done when**
-- [ ] Uploading the sample PDF shows a preview within seconds; confirming imports the rows.
-- [ ] Imported entries appear in listing and reports with a "PDF" source badge.
-- [ ] All checks pass.
+- [x] Uploading the sample PDF shows a preview within seconds; confirming imports the rows.
+- [x] Imported entries appear in listing and reports with a "PDF" source badge.
+- [x] All checks pass.
 
 **Commit:** `feat(imports): PDF food diary import with background parsing and preview`
 
@@ -697,6 +697,6 @@ alembic upgrade head              # apply migrations
 | 4 — Time-Range Listing | Done |
 | 5 — Reports & Dashboard | Done |
 | 6 — AI Calorie Extraction | Done |
-| 7 — Conversational Chat | Not started |
-| 8 — PDF Bulk Import | Not started |
+| 7 — Conversational Chat | Done |
+| 8 — PDF Bulk Import | Done |
 | 9 — Hardening, Docs & Deployment | Not started |

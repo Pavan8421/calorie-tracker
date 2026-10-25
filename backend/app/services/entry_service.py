@@ -66,6 +66,8 @@ async def create_entry(
     session: AsyncSession,
     user: User,
     data: FoodEntryCreate,
+    *,
+    source_override: EntrySource | None = None,
 ) -> FoodEntryRead:
     consumed_at = data.consumed_at or datetime.now(UTC)
     if consumed_at.tzinfo is None:
@@ -87,7 +89,7 @@ async def create_entry(
         fiber_g=data.fiber_g,
         sugar_g=data.sugar_g,
         micronutrients=data.micronutrients,
-        source=EntrySource(data.source),
+        source=source_override or EntrySource(data.source),
         notes=data.notes,
     )
     await session.commit()
