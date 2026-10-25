@@ -2,6 +2,10 @@
 
 Full-stack app for personal nutrition tracking: log meals, set goals, view reports, extract nutrition from photos, chat with an AI assistant, and bulk-import PDF food diaries.
 
+## Demo
+
+[▶ Play demo](https://drive.google.com/file/d/1p399Md6iHJtKT-IlZzNituzgaSTXv79c/view?usp=sharing)
+
 ## Features
 
 - **Auth** — register / login with JWT access tokens and httpOnly refresh cookies
