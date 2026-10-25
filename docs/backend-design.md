@@ -38,7 +38,7 @@ It is the reference for implementation; the README covers setup and running the 
 | Validation / settings | Pydantic v2, pydantic-settings |
 | Auth | PyJWT (access tokens), argon2 password hashing via `pwdlib` |
 | Cache / queue | Redis + `arq` (async job queue) |
-| AI | OpenAI SDK — vision + structured outputs + tool calling |
+| AI | LangChain (OpenAI chat models) — vision, structured outputs, tool-calling agents |
 | PDF parsing | `pdfplumber` |
 | Image processing | Pillow |
 | Testing / linting | pytest + httpx, ruff |
@@ -70,7 +70,7 @@ PostgreSQL
 - **Endpoints are thin.** No business logic; they translate HTTP to a service call.
 - **Services are reusable.** The REST API, the chat tools, and the PDF worker all call the same services, so business rules exist in exactly one place.
 - **Repositories never trust callers for ownership.** Every method requires `user_id`.
-- **Integrations** (`integrations/`) wrap external systems (OpenAI, PDF parsing) so they can be mocked in tests and swapped without touching services.
+- **Integrations** (`integrations/`) wrap external systems (LLM via LangChain, PDF parsing) so they can be mocked in tests and swapped without touching services. Domain rules stay in services; LangChain is used only for model orchestration.
 
 ### 2.2 Runtime components
 
@@ -79,9 +79,10 @@ PostgreSQL
   Browser ────► │  frontend    │  nginx: serves SPA, proxies /api → backend
                 └──────┬───────┘
                        │ (private network)
-                ┌──────▼───────┐        ┌──────────┐
-                │  backend     │ ─────► │ OpenAI   │
-                │  (FastAPI)   │        └──────────┘
+                ┌──────▼───────┐        ┌────────────────────┐
+                │  backend     │ ─────► │ OpenAI (via        │
+                │  (FastAPI +  │        │ LangChain)         │
+                │   LangChain) │        └────────────────────┘
                 └──┬───────┬───┘
                    │       │ enqueue jobs / rate limits
          ┌─────────▼─┐   ┌─▼───────┐
@@ -89,7 +90,8 @@ PostgreSQL
          └─────────▲─┘   └─┬───────┘
                    │       │ consume jobs
                 ┌──┴───────▼───┐
-                │  worker (arq)│ ─────► OpenAI (PDF fallback)
+                │  worker (arq)│ ─────► OpenAI via LangChain
+                │              │        (PDF LLM fallback)
                 └──────────────┘
 ```
 
@@ -136,14 +138,14 @@ backend/
       import_service.py  chat_service.py
 
     integrations/
-      openai_client.py          # single AsyncOpenAI client, timeouts, error mapping
-      vision.py                 # image-analysis prompts + response schema
+      llm.py                    # shared LangChain ChatOpenAI factory: timeouts, retries, error mapping; injectable for tests
+      vision.py                 # vision prompts + with_structured_output(ImageAnalysis)
       pdf_parser.py             # pdfplumber table extraction + column mapping
-      pdf_llm_fallback.py       # LLM-based row extraction for messy PDFs
+      pdf_llm_fallback.py       # LangChain structured-output row extraction for messy PDFs
 
     chat/
-      tools.py                  # tool registry: name, args schema, handler → services
-      agent.py                  # tool-calling loop
+      tools.py                  # LangChain tools: Pydantic args, handlers → services
+      agent.py                  # tool-calling agent loop (max iterations)
       prompts.py                # system prompt
 
     workers/
@@ -775,7 +777,7 @@ GROUP BY m.key;
 
 ### 6.6 AI Calorie Extraction
 
-**Files:** `endpoints/ai.py`, `services/ai_service.py`, `integrations/vision.py`, `integrations/openai_client.py`, `schemas/ai.py`
+**Files:** `endpoints/ai.py`, `services/ai_service.py`, `integrations/vision.py`, `integrations/llm.py`, `schemas/ai.py`
 
 **Endpoint:** `POST /ai/analyze-image` (multipart: `file`, `hint = label | plate | auto`)
 Returns **draft entries only — nothing is saved.**
@@ -788,7 +790,7 @@ Returns **draft entries only — nothing is saved.**
 3. **Preprocess**
    - Apply EXIF orientation, then strip EXIF metadata (may contain GPS location).
    - Resize so the longest side ≤ 1024 px; re-encode as JPEG; base64-encode. Reduces cost and latency.
-4. **Call OpenAI** using **structured outputs** (JSON schema derived from a Pydantic model), so the response shape is guaranteed — see *Response schema* below. Prompt varies by hint:
+4. **Call the LLM via LangChain** using `with_structured_output(ImageAnalysis)` so the response is parsed and validated as a Pydantic model — see *Response schema* below. Prompt varies by hint:
    - **label** — read the nutrition facts panel exactly; values per serving.
    - **plate** — identify each food item and estimate its portion.
    - **auto** — the model classifies first.
@@ -815,11 +817,11 @@ ImageAnalysis
 | Situation | Response |
 |---|---|
 | Not a food image | `422 NOT_FOOD_IMAGE` |
-| OpenAI timeout (30 s) | `504 AI_TIMEOUT` |
-| OpenAI rate limited / unavailable | `503 AI_UNAVAILABLE` |
+| LLM timeout (30 s) | `504 AI_TIMEOUT` |
+| LLM rate limited / unavailable | `503 AI_UNAVAILABLE` |
 | Model refusal | `422 AI_REFUSED` |
 
-The OpenAI client retries once on transient errors.
+The shared LangChain client in `integrations/llm.py` retries once on transient errors and maps provider failures to the errors above.
 
 **Why synchronous:** the user waits for the pre-filled form anyway, and analysis takes ~5–15 seconds. A background job would add complexity without UX benefit.
 
@@ -843,7 +845,7 @@ The OpenAI client retries once on transient errors.
 
 **Tool registry (`chat/tools.py`)**
 
-Each tool = name + description + Pydantic args model (converted to the JSON schema sent to OpenAI) + handler that calls an existing service.
+Each tool is a LangChain tool: name + description + Pydantic args model + handler that calls an existing service. Argument schemas are derived from the Pydantic models.
 
 | Tool | Calls |
 |---|---|
@@ -866,17 +868,17 @@ General nutrition questions ("is paneer high in protein?") are answered by the m
    - Use tools for anything involving the user's data.
    - When nutrition values aren't given, estimate them and say so.
    - Ask for confirmation before deleting anything.
-4. Call OpenAI with the tool definitions.
+4. Run a LangChain tool-calling agent (shared chat model from `integrations/llm.py`) with the registered tools.
 5. If the model requests tool calls, for each call:
    1. Validate arguments against the tool's Pydantic model.
-   2. Execute the handler with `user_id` **from the auth context**.
-   3. Append the result as a `tool` message and call the model again.
+   2. Execute the handler with `user_id` **from the auth context** (never from model-supplied ids for ownership).
+   3. Feed the tool result back into the agent and continue.
 6. Stop after at most **5 iterations** (guards against loops).
 7. Persist the assistant reply (and intermediate tool calls); return the reply plus `actions` (e.g. `[{"type": "entry_created", "id": "..."}]`) so the frontend can refresh affected data.
 
 **Error handling**
 - Tool errors (invalid args, entry not found, business rule violations) are returned to the model as `{"error": "..."}` so it can explain or ask a follow-up — they never surface as `500`.
-- OpenAI failures map to the same `503 / 504` errors as the vision feature.
+- LLM failures map to the same `503 / 504` errors as the vision feature.
 
 **Conversation title:** derived from the first user message (truncated).
 
@@ -913,7 +915,7 @@ General nutrition questions ("is paneer high in protein?") are answered by the m
    - `meal`, `meal type` → `meal_type`
    - micronutrient headers matched against the registry
 4. **Required columns:** date, food name, calories. If there is no meal column, infer it from section headings (e.g. "Breakfast"); otherwise default to `snacks`.
-5. **LLM fallback:** if no tables are found or required columns can't be mapped, extract the text and ask OpenAI (structured outputs) to return rows in the entry schema.
+5. **LLM fallback:** if no tables are found or required columns can't be mapped, extract the text and use LangChain `with_structured_output` (same shared LLM factory) to return rows in the entry schema.
 6. **Validate each row** with the same `FoodEntryCreate` schema used for manual entries. Dates are parsed using `date_format` (resolves `03/04` ambiguity).
    Each row is stored in `parsed_rows` as `{row_number, data, status: valid | invalid, errors}`.
 7. Set `status=preview_ready` and clear `file_data`.

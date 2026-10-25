@@ -1,11 +1,22 @@
 import type { EntryFormValues } from "@/features/entries/schemas";
 import type {
+  ClientEntrySource,
   FoodEntry,
   FoodEntryCreatePayload,
   MealType,
 } from "@/features/entries/types";
+import { UNITS } from "@/features/entries/types";
+import type { DraftFoodItem } from "@/features/scan/types";
 import { fromDatetimeLocalValue, nowDatetimeLocal, toDatetimeLocalValue } from "@/lib/datetime";
 import { toNumber } from "@/lib/numbers";
+
+const UNIT_SET = new Set<string>(UNITS);
+
+function normalizeUnit(unit: string): EntryFormValues["unit"] {
+  const trimmed = unit.trim().toLowerCase();
+  if (UNIT_SET.has(trimmed)) return trimmed as EntryFormValues["unit"];
+  return "serving";
+}
 
 export function emptyEntryFormValues(): EntryFormValues {
   return {
@@ -58,7 +69,36 @@ export function recentFoodToFormValues(
   };
 }
 
-export function formValuesToPayload(values: EntryFormValues): FoodEntryCreatePayload {
+/** Prefill from an AI draft item. */
+export function draftToFormValues(
+  draft: DraftFoodItem,
+  currentMealType: MealType | string,
+  analysisNotes?: string,
+): EntryFormValues {
+  return {
+    meal_type: currentMealType,
+    food_name: draft.food_name,
+    quantity: draft.quantity,
+    unit: normalizeUnit(draft.unit),
+    consumed_at_local: nowDatetimeLocal(),
+    calories_kcal: draft.calories_kcal,
+    protein_g: draft.protein_g,
+    carbs_g: draft.carbs_g,
+    fat_g: draft.fat_g,
+    fiber_g: draft.fiber_g ?? undefined,
+    sugar_g: draft.sugar_g ?? undefined,
+    notes: analysisNotes?.trim() ?? "",
+    micronutrients: Object.entries(draft.micronutrients ?? {}).map(([code, value]) => ({
+      code,
+      value: Number(value),
+    })),
+  };
+}
+
+export function formValuesToPayload(
+  values: EntryFormValues,
+  source: ClientEntrySource = "manual",
+): FoodEntryCreatePayload {
   const micros: Record<string, number> = {};
   for (const row of values.micronutrients ?? []) {
     if (row.code) micros[row.code] = row.value;
@@ -77,7 +117,7 @@ export function formValuesToPayload(values: EntryFormValues): FoodEntryCreatePay
     fiber_g: values.fiber_g ?? null,
     sugar_g: values.sugar_g ?? null,
     micronutrients: micros,
-    source: "manual",
+    source,
     notes: values.notes?.trim() ? values.notes.trim() : null,
   };
 }

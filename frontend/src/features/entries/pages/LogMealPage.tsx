@@ -9,11 +9,22 @@ import { DeleteEntryDialog } from "@/features/entries/components/DeleteEntryDial
 import { EditEntryDialog } from "@/features/entries/components/EditEntryDialog";
 import { EntryForm } from "@/features/entries/components/EntryForm";
 import { RecentFoodsPicker } from "@/features/entries/components/RecentFoodsPicker";
-import { emptyEntryFormValues, recentFoodToFormValues } from "@/features/entries/formDefaults";
+import {
+  draftToFormValues,
+  emptyEntryFormValues,
+  recentFoodToFormValues,
+} from "@/features/entries/formDefaults";
 import { useCreateEntry, useRecentEntries } from "@/features/entries/hooks";
 import type { EntryFormValues } from "@/features/entries/schemas";
-import type { FoodEntry, FoodEntryCreatePayload } from "@/features/entries/types";
+import type {
+  ClientEntrySource,
+  FoodEntry,
+  FoodEntryCreatePayload,
+  MealType,
+} from "@/features/entries/types";
 import { MEAL_TYPES } from "@/features/entries/types";
+import { ScanPhotoDialog } from "@/features/scan/components/ScanPhotoDialog";
+import type { DraftFoodItem } from "@/features/scan/types";
 import { formatDecimal } from "@/lib/numbers";
 
 export function LogMealPage() {
@@ -21,17 +32,29 @@ export function LogMealPage() {
   const recent = useRecentEntries(1, 20);
   const [formValues, setFormValues] = useState<EntryFormValues>(emptyEntryFormValues());
   const [formKey, setFormKey] = useState(0);
+  const [entrySource, setEntrySource] = useState<ClientEntrySource>("manual");
+  const [scanOpen, setScanOpen] = useState(false);
   const [editing, setEditing] = useState<FoodEntry | null>(null);
   const [deleting, setDeleting] = useState<FoodEntry | null>(null);
 
   async function handleCreate(payload: FoodEntryCreatePayload) {
     await createEntry.mutateAsync(payload);
     setFormValues(emptyEntryFormValues());
+    setEntrySource("manual");
     setFormKey((k) => k + 1);
   }
 
   function applyRecent(entry: FoodEntry) {
     setFormValues(recentFoodToFormValues(entry, formValues.meal_type));
+    setEntrySource("manual");
+    setFormKey((k) => k + 1);
+  }
+
+  function applyDraft(item: DraftFoodItem, analysisNotes: string) {
+    setFormValues(
+      draftToFormValues(item, formValues.meal_type as MealType, analysisNotes),
+    );
+    setEntrySource("ai_image");
     setFormKey((k) => k + 1);
   }
 
@@ -48,16 +71,27 @@ export function LogMealPage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Log meal</CardTitle>
-          <CardDescription>
-            Enter meal details, macros, and optional micronutrients.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle>Log meal</CardTitle>
+            <CardDescription>
+              Enter meal details manually, or scan a label / plate photo.
+              {entrySource === "ai_image" ? (
+                <span className="mt-1 block text-teal-800">
+                  Form pre-filled from AI scan — review and save.
+                </span>
+              ) : null}
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" onClick={() => setScanOpen(true)}>
+            Scan photo
+          </Button>
         </CardHeader>
         <CardContent>
           <EntryForm
             key={formKey}
             initialValues={formValues}
+            source={entrySource}
             submitLabel="Log meal"
             onSubmit={handleCreate}
           />
@@ -134,6 +168,11 @@ export function LogMealPage() {
         </CardContent>
       </Card>
 
+      <ScanPhotoDialog
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onUseDraft={applyDraft}
+      />
       <EditEntryDialog
         entry={editing}
         open={Boolean(editing)}

@@ -11,6 +11,9 @@ redis==5.2.1
 arq==0.26.3
 httpx==0.28.1
 openai==1.109.1
+langchain==0.3.30
+langchain-openai==0.3.35
+langchain-core==0.3.86
 pillow==11.3.0
 pdfplumber==0.11.7
 pwdlib[argon2]==0.2.1

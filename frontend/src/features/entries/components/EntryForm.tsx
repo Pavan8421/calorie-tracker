@@ -13,7 +13,11 @@ import {
 } from "@/features/entries/formDefaults";
 import { useNutrients } from "@/features/entries/hooks";
 import { entryFormSchema, type EntryFormValues } from "@/features/entries/schemas";
-import type { FoodEntry, FoodEntryCreatePayload } from "@/features/entries/types";
+import type {
+  ClientEntrySource,
+  FoodEntry,
+  FoodEntryCreatePayload,
+} from "@/features/entries/types";
 import { MEAL_TYPES, UNITS } from "@/features/entries/types";
 import { applyApiFieldErrors } from "@/lib/formErrors";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -22,6 +26,7 @@ type EntryFormProps = {
   initialEntry?: FoodEntry | null;
   initialValues?: EntryFormValues | null;
   submitLabel?: string;
+  source?: ClientEntrySource;
   onSubmit: (payload: FoodEntryCreatePayload) => Promise<void>;
   onCancel?: () => void;
 };
@@ -30,6 +35,7 @@ export function EntryForm({
   initialEntry,
   initialValues,
   submitLabel = "Log meal",
+  source = "manual",
   onSubmit,
   onCancel,
 }: EntryFormProps) {
@@ -59,7 +65,7 @@ export function EntryForm({
 
   async function submit(values: EntryFormValues) {
     try {
-      await onSubmit(formValuesToPayload(values));
+      await onSubmit(formValuesToPayload(values, source));
     } catch (error) {
       applyApiFieldErrors(error, setError);
     }

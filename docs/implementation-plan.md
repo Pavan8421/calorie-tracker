@@ -223,7 +223,7 @@ alembic upgrade head              # apply migrations
 | API tests (`tests/api/`) | httpx `AsyncClient` against the FastAPI app, real PostgreSQL test database |
 | Unit tests (`tests/unit/`) | Pure logic: date helpers, nutrient validation, goal resolution, PDF column mapping, image preprocessing |
 | Database isolation | Each test runs inside a transaction that is rolled back afterwards |
-| OpenAI | Replaced via dependency override with a fake client returning scripted responses — no network calls in tests |
+| LLM (LangChain) | Shared chat-model factory overridden with a fake returning scripted structured outputs / tool calls — no network calls in tests |
 | Redis | `fakeredis` for rate-limit tests |
 | arq worker | Task functions are called directly in tests (no running worker needed) |
 
@@ -522,43 +522,43 @@ alembic upgrade head              # apply migrations
 
 **Goal:** users upload a nutrition label or plate photo and get a pre-filled, editable entry.
 
-**Backend**
+**Backend** *(done)*
 
 | Task | Files |
 |---|---|
-| OpenAI client wrapper: timeouts, one retry, error mapping; exposed as a dependency so tests can override it | `integrations/openai_client.py` |
-| Vision prompts per hint, structured output schema | `integrations/vision.py` |
-| Response and draft schemas | `schemas/ai.py` |
-| Service: file validation (size, Pillow sniffing), preprocessing (EXIF orientation + strip, resize, re-encode), call, post-processing (drop unknown keys, clamp, calorie sanity note), `not_food` handling | `services/ai_service.py` |
+| Shared LangChain chat-model factory: timeouts, one retry, error mapping; injectable so tests can override it; add `langchain` / `langchain-openai` deps | `integrations/llm.py`, `requirements.txt` |
+| Vision prompts per hint + `with_structured_output(ImageAnalysis)` | `integrations/vision.py` |
+| Response and draft schemas (Pydantic) | `schemas/ai.py` |
+| Service: file validation (size, Pillow sniffing), preprocessing (EXIF orientation + strip, resize, re-encode), LangChain call, post-processing (drop unknown keys, clamp, calorie sanity note), `not_food` handling | `services/ai_service.py` |
 | `POST /ai/analyze-image` with rate limit (20/hour) | `endpoints/ai.py` |
 
 **Frontend**
 
 | Task | Files |
 |---|---|
-| Scan dialog: drag-and-drop / file picker / mobile camera (`capture`), hint selector (auto, label, plate), image preview | `features/scan/components/ScanPhotoDialog.tsx` |
+| Scan dialog: drag-and-drop / file picker (no camera capture), hint selector (auto, label, plate), image preview | `features/scan/components/ScanPhotoDialog.tsx` |
 | Loading state during analysis (5–15 s) | `features/scan/components/` |
 | Draft review: one card per detected item, confidence badge, model notes, "Use this" pre-fills `EntryForm` | `features/scan/components/DraftReview.tsx` |
 | Save with `source=ai_image` | `features/entries/` |
 | "Scan photo" button on the log meal page | `features/entries/pages/LogMealPage.tsx` |
 
-**Tests** (OpenAI faked)
+**Tests** (LLM faked via LangChain factory override)
 - Label image returns one draft with the label values.
 - Plate image returns multiple drafts.
 - `not_food` → `422 NOT_FOOD_IMAGE`.
 - Unknown micronutrient keys dropped; negative values clamped.
 - Non-image or corrupt file → `415`; file over 5 MB → `413`.
-- OpenAI timeout → `504`; OpenAI unavailable → `503`.
+- LLM timeout → `504`; LLM unavailable → `503`.
 - Rate limit → `429`.
 - Preprocessing unit test: output is resized and has no EXIF data.
 
 **Done when**
-- [ ] Uploading a real nutrition label photo pre-fills the form with sensible values.
-- [ ] Uploading a plate photo produces editable drafts per item.
-- [ ] Errors (wrong file, not food, AI failure) show clear messages.
-- [ ] All checks pass.
+- [x] Uploading a real nutrition label photo pre-fills the form with sensible values.
+- [x] Uploading a plate photo produces editable drafts per item.
+- [x] Errors (wrong file, not food, AI failure) show clear messages.
+- [x] All checks pass.
 
-**Commit:** `feat(ai): photo-based nutrition extraction with editable drafts`
+**Commit:** `feat(ai): LangChain vision extraction with editable drafts`
 
 ---
 
@@ -572,9 +572,9 @@ alembic upgrade head              # apply migrations
 |---|---|
 | `chat_conversations`, `chat_messages` models + `chat_role` enum + migration | `models/chat.py` |
 | Chat repository (conversations, paginated messages, last-N context) | `repositories/chat_repo.py` |
-| Tool registry: Pydantic args → JSON schema; handlers calling existing services; `delete_entry` requires `confirmed=true` | `chat/tools.py` |
+| LangChain tools: Pydantic args; handlers calling existing services; `delete_entry` requires `confirmed=true` | `chat/tools.py` |
 | System prompt with today's date, timezone, rules | `chat/prompts.py` |
-| Agent loop: max 5 iterations, tool errors returned to the model, `user_id` from auth context, collected `actions` | `chat/agent.py` |
+| LangChain tool-calling agent: max 5 iterations, tool errors returned to the model, `user_id` from auth context, collected `actions` | `chat/agent.py` |
 | Persistence, conversation titles | `services/chat_service.py` |
 | Chat schemas and endpoints; rate limit (30/minute) | `schemas/chat.py`, `endpoints/chat.py` |
 
@@ -587,8 +587,8 @@ alembic upgrade head              # apply migrations
 | Typing indicator while waiting; suggested prompts for empty conversations | `features/chat/components/` |
 | Invalidate entries / goals / reports queries based on returned `actions` | `features/chat/hooks.ts` |
 
-**Tests** (OpenAI faked with scripted tool calls)
-- Every tool's JSON schema is generated from its Pydantic model.
+**Tests** (LLM faked with scripted tool calls)
+- Every tool's schema is generated from its Pydantic model.
 - "Log 2 eggs for breakfast" → `log_meal` called → entry created with `source=chat` → action returned.
 - Tool argument validation error is returned to the model, and the request still succeeds.
 - Loop stops after 5 iterations.
@@ -601,7 +601,7 @@ alembic upgrade head              # apply migrations
 - [ ] Actions taken in chat appear immediately in the dashboard and entries list.
 - [ ] All checks pass.
 
-**Commit:** `feat(chat): LLM assistant with tool calling over existing services`
+**Commit:** `feat(chat): LangChain tool-calling assistant over existing services`
 
 ---
 
@@ -616,7 +616,7 @@ alembic upgrade head              # apply migrations
 | `import_jobs` model + `import_status` enum + migration; adds `food_entries.import_job_id` FK | `models/import_job.py`, `models/food_entry.py` |
 | arq pool created in app lifespan; worker settings | `core/redis.py`, `workers/main.py` |
 | Table extraction, header normalisation, synonym mapping, multi-page header carry-over, meal inference | `integrations/pdf_parser.py` |
-| LLM fallback for unparseable PDFs | `integrations/pdf_llm_fallback.py` |
+| LLM fallback for unparseable PDFs (LangChain structured output via shared `llm.py`) | `integrations/pdf_llm_fallback.py` |
 | Job task: status transitions, row validation with `FoodEntryCreate`, clear `file_data`, failure handling | `workers/import_tasks.py` |
 | Service: upload validation, job creation, enqueue, confirm in one transaction, duplicate skip | `services/import_service.py` |
 | Repository, schemas, endpoints; rate limit (10/hour) | `repositories/import_repo.py`, `schemas/imports.py`, `endpoints/imports.py` |
@@ -696,7 +696,7 @@ alembic upgrade head              # apply migrations
 | 3 — Meal Entry | Done |
 | 4 — Time-Range Listing | Done |
 | 5 — Reports & Dashboard | Done |
-| 6 — AI Calorie Extraction | Not started |
+| 6 — AI Calorie Extraction | Done |
 | 7 — Conversational Chat | Not started |
 | 8 — PDF Bulk Import | Not started |
 | 9 — Hardening, Docs & Deployment | Not started |
