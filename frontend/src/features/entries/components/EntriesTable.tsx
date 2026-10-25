@@ -1,3 +1,5 @@
+import { Pencil, Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   ENTRY_SOURCE_LABELS,
@@ -51,11 +53,27 @@ export function EntriesTable({ entries, onEdit, onDelete }: EntriesTableProps) {
               </td>
               <td className="px-3 py-2 text-right">
                 <div className="flex justify-end gap-1">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(entry)}>
-                    Edit
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 px-0 text-primary hover:bg-primary/10 hover:text-primary"
+                    aria-label={`Edit ${entry.food_name}`}
+                    title="Edit"
+                    onClick={() => onEdit(entry)}
+                  >
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => onDelete(entry)}>
-                    Delete
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Delete ${entry.food_name}`}
+                    title="Delete"
+                    onClick={() => onDelete(entry)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </td>

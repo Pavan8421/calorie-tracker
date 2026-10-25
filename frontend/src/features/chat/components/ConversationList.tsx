@@ -51,7 +51,7 @@ export function ConversationList({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-auto shrink-0 px-2 opacity-0 group-hover:opacity-100"
+              className="h-auto shrink-0 px-2 text-destructive opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
               aria-label={`Delete ${c.title}`}
               onClick={() => {
                 if (window.confirm("Delete this conversation?")) onDelete(c.id);

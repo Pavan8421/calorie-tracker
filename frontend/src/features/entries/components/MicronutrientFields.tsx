@@ -101,7 +101,7 @@ export function MicronutrientFields({ nutrients }: MicronutrientFieldsProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10 p-0"
+                className="h-10 w-10 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 aria-label="Remove nutrient"
                 onClick={() => remove(index)}
               >

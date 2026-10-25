@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/common/EmptyState";
@@ -56,6 +57,9 @@ export function WeightHistoryTable() {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Delete weight log from ${log.logged_on}`}
+                    title="Delete"
                     disabled={deleteLog.isPending}
                     onClick={() => {
                       if (window.confirm("Delete this weight log?")) {
@@ -63,7 +67,7 @@ export function WeightHistoryTable() {
                       }
                     }}
                   >
-                    Delete
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </td>
               </tr>

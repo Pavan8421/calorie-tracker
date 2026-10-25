@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/common/EmptyState";
@@ -145,17 +146,23 @@ export function LogMealPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
+                            className="h-8 w-8 px-0 text-primary hover:bg-primary/10 hover:text-primary"
+                            aria-label={`Edit ${entry.food_name}`}
+                            title="Edit"
                             onClick={() => setEditing(entry)}
                           >
-                            Edit
+                            <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
+                            className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${entry.food_name}`}
+                            title="Delete"
                             onClick={() => setDeleting(entry)}
                           >
-                            Delete
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>

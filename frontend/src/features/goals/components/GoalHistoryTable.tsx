@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/common/EmptyState";
@@ -69,6 +70,9 @@ export function GoalHistoryTable() {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="h-8 w-8 px-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Delete goal from ${goal.effective_from}`}
+                    title="Delete"
                     disabled={deleteGoal.isPending}
                     onClick={() => {
                       if (window.confirm("Delete this goal version?")) {
@@ -76,7 +80,7 @@ export function GoalHistoryTable() {
                       }
                     }}
                   >
-                    Delete
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </td>
               </tr>
