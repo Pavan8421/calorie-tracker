@@ -1,0 +1,17 @@
+app = "ctk-api"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  release_command = "alembic upgrade head"
+
+[processes]
+  app = "uvicorn app.main:app --host :: --port 8000"
+  worker = "arq app.workers.main.WorkerSettings"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

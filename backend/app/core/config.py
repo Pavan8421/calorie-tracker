@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     @field_validator("database_url", "test_database_url", mode="before")
     @classmethod
     def ensure_asyncpg_scheme(cls, value: Any) -> Any:
-        """Railway provides postgresql://; async SQLAlchemy needs postgresql+asyncpg://."""
+        """Hosts often provide postgresql://; async SQLAlchemy needs postgresql+asyncpg://."""
         if value is None or not isinstance(value, str):
             return value
         if value.startswith("postgresql+asyncpg://"):

@@ -19,5 +19,5 @@ COPY app ./app
 
 EXPOSE 8000
 
-# Bind 0.0.0.0 for Docker Compose. Railway start command uses --host ::.
+# Bind 0.0.0.0 for Docker Compose. Fly starts with --host :: (see fly.toml).
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

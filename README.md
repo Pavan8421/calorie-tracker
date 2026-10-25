@@ -19,9 +19,7 @@ Full-stack app for personal nutrition tracking: log meals, set goals, view repor
 | Backend | FastAPI, SQLAlchemy (async), Alembic, PostgreSQL, Redis, arq |
 | AI | OpenAI via LangChain (vision, chat tools, PDF fallback) |
 | Frontend | React, Vite, TypeScript, TanStack Query, Tailwind CSS |
-| Local / deploy | Docker Compose · Railway |
-
-The signed-in screens follow the visual sample in [`docs/samples/Calorie Tracker UI Refresh.html`](docs/samples/Calorie%20Tracker%20UI%20Refresh.html).
+| Local / deploy | Docker Compose · [Fly.io](https://ctk-web.fly.dev/) |
 
 ## Architecture (short)
 
@@ -181,21 +179,18 @@ npm run build
 
 Pytest expects Postgres (and the test DB) reachable — typically Compose on port **5433**. Redis is faked in unit/API tests via fakeredis; the real Redis is still needed at runtime for rate limits and enqueueing imports.
 
-## Deployment (Railway)
+## Deployment (Fly.io)
 
-One project, five pieces on the private network:
+Live app: [https://ctk-web.fly.dev/](https://ctk-web.fly.dev/)
 
-| Service | Notes |
-|---|---|
-| Postgres | Railway plugin → `DATABASE_URL` |
-| Redis | Railway plugin → `REDIS_URL` |
-| **backend** | Root `backend/`, Dockerfile; start `uvicorn app.main:app --host :: --port $PORT`; pre-deploy `alembic upgrade head`; health `/health` |
-| **worker** | Same image/root; start `arq app.workers.main.WorkerSettings`; no public domain |
-| **frontend** | Root `frontend/`; nginx serves the SPA and proxies `/api` to `backend.railway.internal:8000` |
+| App | Config | Role |
+|---|---|---|
+| `ctk-web` | [`frontend/fly.toml`](frontend/fly.toml) | Public site. nginx (`nginx.fly.conf`) serves the SPA and proxies `/api` to the API |
+| `ctk-api` | [`backend/fly.toml`](backend/fly.toml) | API (`uvicorn`) and PDF worker (`arq`) in one app. Release command runs `alembic upgrade head` |
+| `ctk-redis` | [`redis.fly.toml`](redis.fly.toml) | Redis on the private network |
+| `ctk-db` | Fly Postgres | Database. `postgres://` URLs are rewritten to `postgresql+asyncpg://` |
 
-Shared / referenced vars: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `ENVIRONMENT=production`.
-
-Backend start/health defaults: [`backend/railway.json`](backend/railway.json). More detail: [design §9](docs/backend-design.md#9-deployment-railway).
+Secrets on `ctk-api`: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `ENVIRONMENT=production`. More detail: [design §9](docs/backend-design.md#9-deployment-flyio).
 
 Smoke after deploy: register → log meal → reports → photo scan → chat → PDF import (worker must be up).
 
@@ -209,7 +204,6 @@ Smoke after deploy: register → log meal → reports → photo scan → chat �
 - Report series are bounded (≤ 92 days); list endpoints are paginated.
 - Rate limits are Redis fixed-window (auth, AI scan, chat, PDF upload).
 
-See also [design §10](docs/backend-design.md#10-assumptions).
 
 ## Documentation
 

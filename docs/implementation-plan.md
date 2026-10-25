@@ -653,7 +653,7 @@ alembic upgrade head              # apply migrations
 
 ### Phase 9 — Hardening, Docs & Deployment
 
-**Goal:** the project is polished, documented, and live on Railway.
+**Goal:** the project is polished, documented, and live on Fly.io at https://ctk-web.fly.dev/.
 
 **Hardening**
 - Review every endpoint for validation gaps and consistent error codes.
@@ -668,17 +668,15 @@ alembic upgrade head              # apply migrations
 - Deployment instructions.
 - Assumptions and known limitations.
 
-**Deployment (Railway)**
-- [ ] Create project; add Postgres and Redis.
-- [ ] `backend` service: root `backend/`, Dockerfile, `PORT=8000`, start `uvicorn ... --host :: --port $PORT`, pre-deploy `alembic upgrade head`, health check `/health`.
-- [ ] `worker` service: root `backend/`, start `arq app.workers.main.WorkerSettings`, no public domain.
-- [ ] `frontend` service: root `frontend/`, nginx proxying `/api` to `backend.railway.internal:8000` (with `resolver` set).
-- [ ] Shared variables: `DATABASE_URL`, `REDIS_URL` (references), `JWT_SECRET`, `OPENAI_API_KEY`, `ENVIRONMENT=production`.
-- [ ] `railway.json` per service committed.
-- [ ] Smoke test on the live URL: register, log meal, reports, scan photo, chat, PDF import.
+**Deployment (Fly.io)**
+- [x] Postgres (`ctk-db`) and Redis (`ctk-redis`).
+- [x] `ctk-api`: `backend/fly.toml`, `uvicorn` and `arq` processes, release command `alembic upgrade head`.
+- [x] `ctk-web`: `frontend/fly.toml`, nginx proxying `/api` to `app.process.ctk-api.internal:8000`.
+- [x] Secrets: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `ENVIRONMENT=production`.
+- [ ] Smoke test on https://ctk-web.fly.dev/: register, log meal, reports, scan photo, chat, PDF import.
 
 **Done when**
-- [ ] Live URL works end to end for a new user.
+- [ ] Live URL https://ctk-web.fly.dev/ works end to end for a new user.
 - [ ] A reviewer can clone the repo and run it locally with only the README.
 - [ ] All checks pass.
 

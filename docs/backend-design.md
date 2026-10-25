@@ -22,7 +22,7 @@ It is the reference for implementation; the README covers setup and running the 
    - [6.9 Health Check](#69-health-check)
 7. [Redis Usage](#7-redis-usage)
 8. [API Reference Summary](#8-api-reference-summary)
-9. [Deployment (Railway)](#9-deployment-railway)
+9. [Deployment (Fly.io)](#9-deployment-flyio)
 10. [Assumptions](#10-assumptions)
 
 ---
@@ -106,7 +106,7 @@ backend/
     nutrients.py                # nutrient registry (code, name, unit, daily value)
 
     core/
-      config.py                 # Settings from env vars; Railway DB URL scheme fix
+      config.py                 # Settings from env vars; postgres:// URL scheme fix
       security.py               # password hashing, JWT create/verify, refresh token generation
       errors.py                 # AppError hierarchy + exception handlers
       redis.py                  # Redis connection pool
@@ -167,7 +167,7 @@ backend/
     unit/                       # services, parsers, nutrient validation
     api/                        # endpoint tests against a test database
   Dockerfile
-  railway.json
+  fly.toml
   requirements.txt              # pinned runtime dependencies
   requirements-dev.txt          # runtime + test/lint tools
   pyproject.toml                # tool settings (ruff, pytest)
@@ -196,7 +196,7 @@ All configuration comes from environment variables via `pydantic-settings`, vali
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Postgres URL. `postgresql://` is rewritten to `postgresql+asyncpg://` (Railway provides the former). |
+| `DATABASE_URL` | Postgres URL. `postgresql://` and `postgres://` are rewritten to `postgresql+asyncpg://`. |
 | `REDIS_URL` | Redis URL |
 | `JWT_SECRET` | Access token signing key |
 | `ACCESS_TOKEN_TTL_MINUTES` | Default 15 |
@@ -548,7 +548,7 @@ Indexes: `(conversation_id, created_at)`.
 | **`source` column** | Records provenance (manual, AI, PDF, chat) for auditing, debugging, and UI badges. |
 | **UUID primary keys** | Non-sequential IDs don't reveal data volume and can't be enumerated. |
 | **Refresh tokens hashed** | A database leak doesn't expose usable tokens. |
-| **PDF bytes in Postgres, not disk/Redis** | Backend and worker are separate Railway services without a shared disk; Postgres is durable whereas Redis may evict or lose data. Bytes are cleared after processing. |
+| **PDF bytes in Postgres, not disk/Redis** | The API and worker do not share a disk. Postgres is durable, whereas Redis may evict or lose data. Bytes are cleared after processing. |
 
 ---
 
@@ -937,7 +937,7 @@ General nutrition questions ("is paneer high in protein?") are answered by the m
 
 - Runs `SELECT 1` on Postgres and `PING` on Redis.
 - `200 {"status": "ok", "database": "ok", "redis": "ok"}` when healthy; `503` with the failing component otherwise.
-- Used by Railway as the deploy health check.
+- Used as the deploy health check.
 
 ---
 
@@ -992,23 +992,23 @@ Interactive OpenAPI docs are available at `/docs` in local development.
 
 ---
 
-## 9. Deployment (Railway)
+## 9. Deployment (Fly.io)
 
-One Railway project, five services on the private network:
+Live app: [https://ctk-web.fly.dev/](https://ctk-web.fly.dev/)
 
-| Service | Source | Configuration |
+Four Fly apps on one private network:
+
+| App | Source | Configuration |
 |---|---|---|
-| Postgres | Railway database | Provides `DATABASE_URL` |
-| Redis | Railway database | Provides `REDIS_URL` |
-| backend | Repo, root `backend/`, Dockerfile | Start: `uvicorn app.main:app --host :: --port $PORT` · Pre-deploy: `alembic upgrade head` · Health check: `/health` |
-| worker | Repo, root `backend/`, same Dockerfile | Start: `arq app.workers.main.WorkerSettings` · No public domain |
-| frontend | Repo, root `frontend/`, Dockerfile | nginx serves the SPA and proxies `/api/` → `http://backend.railway.internal:8000` |
+| `ctk-db` | Fly Postgres | `DATABASE_URL` for the API. `postgres://` is rewritten to `postgresql+asyncpg://` |
+| `ctk-redis` | `redis.fly.toml` | Redis at `ctk-redis.internal:6379` |
+| `ctk-api` | `backend/`, `fly.toml` | Processes: `uvicorn … --host :: --port 8000` and `arq app.workers.main.WorkerSettings`. Release command: `alembic upgrade head`. No public HTTP service |
+| `ctk-web` | `frontend/`, `fly.toml` | nginx (`nginx.fly.conf`) serves the SPA and proxies `/api` to `app.process.ctk-api.internal:8000` |
 
-- Service configuration lives in each service's `railway.json`.
-- Shared variables via references: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `REDIS_URL=${{Redis.REDIS_URL}}`; secrets (`OPENAI_API_KEY`, `JWT_SECRET`) as shared variables.
-- `--host ::` binds IPv4 and IPv6, required for Railway private networking.
-- Same-origin setup (frontend proxies `/api`) means no CORS in production and simple cookie handling.
-- Local development uses Docker Compose with the same Dockerfiles.
+- Secrets on `ctk-api`: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `OPENAI_API_KEY`, `ENVIRONMENT=production`.
+- `--host ::` binds IPv6, which Fly's private network uses.
+- The browser only talks to `ctk-web`, so production does not enable CORS.
+- Local development uses Docker Compose with the same Dockerfiles. Compose nginx stays in `nginx.conf`.
 
 ---
 
